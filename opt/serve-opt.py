@@ -8,6 +8,7 @@ from typing import Any, Dict
 from uuid import uuid4
 
 from flask import Flask, jsonify, make_response, Response, request
+from transformers import AutoTokenizer, AutoModelForCausalLM
 from waitress import serve
 
 
@@ -30,6 +31,43 @@ MODELS = [
     },
 ]
 
+EXAMPLE_TEXT = '''\
+I am a highly intelligent question answering bot. If you ask me a question that can be answered with one or more \
+spans exactly from the given context, I will give you the answer. If you ask me a question that has no answer within \
+the context, I will respond with "Unknown". An example is given below.
+
+Context: "Thousands of people rallied in Seoul – at this mass protest, people called for President Park Geun-hye to \
+step down, at another rally pro-Park protesters gathered in the South Korean capital.  A constitutional court is set \
+to decide her fate later this month.  I came here out of rage towards President Park Geun-hye, said one of the \
+protesters, angry at what he said were the president's constant lies.  It would have been better if this situation \
+had not happened at all, admitted an anti-Park protester.  But due to the situation, people's political awareness \
+has heightened, and (people) have been given an opportunity to judge for themselves, the direction of politics, he \
+added. The president was impeached by the General Assembly in December over accusations of bribery and abuse of \
+office.  Analysts believe the Constitutional Court will uphold the motion, which would mean fresh elections must be \
+held within 60 days of the court's decision."
+
+Q: Who is protesting?
+A: Thousands of people; people; pro-Park protestors;
+
+Q: Where is the protest?
+A: Seoul; South Korean; the South Korean capital;
+
+Q: When was the protest?
+A: Unknown
+
+Q: What was the protest against?
+A: President Park Geun-hye; Park; her; the president;
+
+Context: "Workers across Asia mark May Day Indo Asian News Service IANS India Private Limited1 May 2017 Jakarta, May \
+1 (IANS) Thousands across Asia marked May Day or International Workers' Day on Monday by holding rallies and \
+demanding better wages and working rights.  In Jakarta, more than 10,000 workers gathered in a rally to protest \
+President Joko Widodo's labour policies, Efe news reported.  They were stopped by a road block police set up about \
+500 metres from the presidential palace, manned by around 1,000 anti-riot police officers."
+
+Q: Who is protesting?
+A:\
+'''
+
 
 def _get_model_data(model_id: str) -> ModelData:
     [model_data] = [md for md in MODELS if md['id'] == model_id]
@@ -48,7 +86,25 @@ def get_timestamp() -> int:
     return int(time())
 
 
-def create_app(auth_token: str) -> Flask:
+class LM:
+    tokenizer: AutoTokenizer
+    model: AutoModelForCausalLM
+
+    def __init__(self, repo: str = 'facebook/opt-125m'):
+        self.tokenizer = AutoTokenizer.from_pretrained(repo)
+        self.model = AutoModelForCausalLM.from_pretrained(repo)
+
+    def complete(self, text: str) -> str:
+        self.model.eval()
+        inputs = self.tokenizer(text, return_tensors='pt')
+        output = self.model.generate(inputs['input_ids'], max_length=600)
+        return self.tokenizer.decode(output[0].tolist())
+
+
+def create_app(auth_token: str, model_repo: str) -> Flask:
+    logging.info('Loading model')
+    lm = LM(model_repo)
+
     app = Flask(__name__)
 
     def authorization_required(f):
@@ -178,7 +234,7 @@ def create_app(auth_token: str) -> Flask:
                 'model': model_id,
                 'choices': [
                     {
-                        'text': '\n\nThis is a test',
+                        'text': lm.complete(prompts[0]),
                         'index': 0,
                         'logprobs': None,
                         'finish_reason': FINISH_REASON_EOS,
@@ -203,6 +259,8 @@ def main():
     parser.add_argument('--auth-token',
                         help='Base-64--encoded authorization token (API key); '
                              'if not specified, one will be generated on startup.')
+    parser.add_argument('--model-repo', default='facebook/opt-125m',
+                        help='Repository of model to use')
     parser.add_argument('-l', '--log-level',
                         choices=('CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'), default='INFO',
                         help='Logging verbosity level threshold (to stderr)')
@@ -214,7 +272,7 @@ def main():
     auth_token = args.auth_token if args.auth_token is not None else generate_auth_token()
     logging.info(f'Authorization token: {auth_token}')
 
-    app = create_app(auth_token=auth_token)
+    app = create_app(auth_token=auth_token, model_repo=args.model_repo)
     serve(app, host=args.host, port=args.port)
 
 

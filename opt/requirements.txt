@@ -1,0 +1,3 @@
+flask
+transformers>=4.20.1
+waitress

@@ -20,15 +20,15 @@ jobs:
         echo $CONDA/bin >> $GITHUB_PATH
     - name: Install dependencies
       run: |
-        pip install -r requirements.txt
+        pip install -r opt/requirements.txt
     - name: Lint with flake8
       run: |
         pip install flake8
-        flake8
+        flake8 opt
     - name: Analyze with mypy
       run: |
         pip install mypy
-        mypy
+        mypy opt
     #- name: Test with pytest
     #  run: |
     #    pip install pytest
