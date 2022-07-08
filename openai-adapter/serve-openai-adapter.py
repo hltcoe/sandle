@@ -1,11 +1,10 @@
 import json
 import logging
+import string
+import secrets
 from base64 import b64encode
 from functools import wraps
-from random import randbytes
-from time import time
-from typing import Any, Dict
-from uuid import uuid4
+from typing import Any, Dict, Tuple
 
 from flask import Flask, jsonify, make_response, Response, request
 from waitress import serve
@@ -14,20 +13,20 @@ from waitress import serve
 ModelData = Dict[str, Any]
 
 
-DEFAULT_MAX_TOKENS = 16
-DEFAULT_NUM_COMPLETIONS = 1
-DEFAULT_PROMPT = '<|endoftext|>'
 END_OF_STREAM = '[DONE]'
-FINISH_REASON_EOS = 'stop'
-FINISH_REASON_LENGTH = 'length'
 
 MODELS = [
     {
-        'id': 'text-davinci-002',
+        'id': model,
         'object': 'model',
-        'owned_by': 'organization-owner',
+        'owned_by': 'facebook',
         'permission': [],
-    },
+    } for model in (
+        'facebook/opt-125m',
+        'facebook/opt-350m',
+        'facebook/opt-1.3b',
+        'facebook/opt-2.7b',
+    )
 ]
 
 EXAMPLE_TEXT = '''\
@@ -73,19 +72,13 @@ def _get_model_data(model_id: str) -> ModelData:
     return model_data
 
 
-def generate_auth_token(num_bytes: int = 8) -> str:
-    return b64encode(randbytes(num_bytes)).decode('ascii')
+def generate_auth_token(user: str = 'user', password_length: int = 16) -> Tuple[str, str, str]:
+    alphabet = string.ascii_letters + string.digits
+    password = ''.join(secrets.choice(alphabet) for _ in range(password_length))
+    return (user, password, b64encode(f'{user}:{password}'))
 
 
-def generate_response_id() -> str:
-    return str(uuid4())
-
-
-def get_timestamp() -> int:
-    return int(time())
-
-
-def create_app(auth_token: str, model_url: str) -> Flask:
+def create_app(auth_token: str, backend_url: str) -> Flask:
     app = Flask(__name__)
 
     def authorization_required(f):
@@ -121,29 +114,7 @@ def create_app(auth_token: str, model_url: str) -> Flask:
     @app.route('/v1/completions', methods=['POST'])
     @authorization_required
     def post_completions():
-        max_tokens = int(request.json.get('max_tokens', DEFAULT_MAX_TOKENS))
-
-        model_data = _get_model_data(request.json['model'])
-        model_id = model_data['id']
-
-        num_completions = int(request.json.get('n', DEFAULT_NUM_COMPLETIONS))
-
-        _prompt = request.json.get('prompt', DEFAULT_PROMPT)
-        prompts = _prompt if isinstance(_prompt, list) else [_prompt]
-
-        _stop = request.json.get('stop', [])
-        stops = _stop if isinstance(_stop, list) else [_stop]
-
         stream = request.json.get('stream', False)
-
-        user = request.json.get('user')
-
-        logging.debug(f'Computing {num_completions} completion{"" if num_completions == 1 else "1"} '
-                      f'with up to {max_tokens} token{"" if max_tokens == 1 else "1"} each '
-                      f'for user {user}')
-
-        response_id = generate_response_id()
-        created = get_timestamp()
         if stream:
             return Response(
                 (f'data: {event_data}\n\n' for event_data in [
@@ -233,7 +204,7 @@ def main():
         description='Run a clone of OpenAI\'s API Service in your Local Environment',
         formatter_class=ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument('model_url',
+    parser.add_argument('backend_url',
                         help='URL of backend language model service')
     parser.add_argument('--host', default='0.0.0.0',
                         help='Hostname or IP to serve on')
@@ -250,10 +221,15 @@ def main():
     logging.basicConfig(format='[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s',
                         level=args.log_level)
 
-    auth_token = args.auth_token if args.auth_token is not None else generate_auth_token()
+    if args.auth_token is not None:
+        (user, password, auth_token) = generate_auth_token()
+        logging.info(f'Generated authorization token user: {user}')
+        logging.info(f'Generated authorization token password: {password}')
+    else:
+        auth_token = args.auth_token
     logging.info(f'Authorization token: {auth_token}')
 
-    app = create_app(auth_token=auth_token, model_url=args.model_url)
+    app = create_app(auth_token=auth_token, backend_url=args.backend_url)
     serve(app, host=args.host, port=args.port)
 
 
