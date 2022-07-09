@@ -1,3 +1,5 @@
 flask
+flask-cors
+flask-httpauth
 requests
 waitress

@@ -64,7 +64,6 @@ class LM:
                  max_new_tokens: int = STREAM_TOKEN_BATCH_SIZE) -> Completion:
         (tokenizer, model) = self.get_tokenizer_and_model(model_id)
 
-        logging.info(f'Generating completion of up to {max_new_tokens} tokens for {len(text)}-character prompt')
         raw_completion = self._complete(text, tokenizer, model, max_new_tokens)
         output_text = raw_completion.text
 
@@ -80,10 +79,9 @@ class LM:
     def stream_complete(self, text: str, model_id: str,
                         stop_strings: Iterable[str],
                         max_new_tokens: int = DEFAULT_MAX_TOKENS,
-                        token_batch_size: int = STREAM_TOKEN_BATCH_SIZE) -> Generator[Completion]:
+                        token_batch_size: int = STREAM_TOKEN_BATCH_SIZE) -> Iterable[Completion]:
         (tokenizer, model) = self.get_tokenizer_and_model(model_id)
 
-        logging.info(f'Generating completion of up to {max_new_tokens} tokens for {len(text)}-character prompt')
         num_new_tokens = 0
         finish_reason = None
         while finish_reason is None:
@@ -145,8 +143,7 @@ def create_app(preload_model: Optional[str]) -> Flask:
     def post_completions():
         max_tokens = int(request.json.get('max_tokens', DEFAULT_MAX_TOKENS))
 
-        model_data = _get_model_data(request.json['model'])
-        model_id = model_data['id']
+        model_id = request.json['model']
 
         prompt = request.json.get('prompt', DEFAULT_PROMPT)
 
@@ -157,7 +154,7 @@ def create_app(preload_model: Optional[str]) -> Flask:
 
         user = request.json.get('user')
 
-        completion_log_text = 'streaming completion' if completion else 'completion'
+        completion_log_text = 'streaming completion' if stream else 'completion'
         tokens_log_text = 'token' if max_tokens == 1 else 'tokens'
         logging.debug(f'Computing {completion_log_text} of up to {max_tokens} {tokens_log_text} for user {user}')
 

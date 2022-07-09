@@ -1,0 +1,32 @@
+version: '3'
+
+services:
+  demo:
+    build: demo
+    ports:
+      - "${OPENAISLE_DEMO_PORT:-80}:80"
+    depends_on:
+      - openai-adapter
+    restart: unless-stopped
+
+  openai-adapter:
+    build: openai-adapter
+    command:
+      - http://opt:8000/v1/completions
+      - --port
+      - '8000'
+    depends_on:
+      - opt
+    restart: unless-stopped
+
+  opt:
+    build: opt
+    command:
+      - --port
+      - '8000'
+    restart: unless-stopped
+    #deploy:
+    #  resources:
+    #    reservations:
+    #      devices:
+    #        - capabilities: [gpu]

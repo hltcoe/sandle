@@ -1,12 +1,12 @@
-import json
 import logging
-import string
 import secrets
 from base64 import b64encode
-from functools import wraps
-from typing import Any, Dict, Tuple
+from typing import Any, Dict
 
+import requests
 from flask import Flask, jsonify, make_response, Response, request
+from flask_cors import CORS
+from flask_httpauth import HTTPBasicAuth, HTTPTokenAuth, MultiAuth
 from waitress import serve
 
 
@@ -17,16 +17,11 @@ END_OF_STREAM = '[DONE]'
 
 MODELS = [
     {
-        'id': model,
+        'id': f'facebook/opt-{size}',
         'object': 'model',
         'owned_by': 'facebook',
         'permission': [],
-    } for model in (
-        'facebook/opt-125m',
-        'facebook/opt-350m',
-        'facebook/opt-1.3b',
-        'facebook/opt-2.7b',
-    )
+    } for size in ('125m', '350m', '1.3b', '2.7b')
 ]
 
 EXAMPLE_TEXT = '''\
@@ -72,34 +67,46 @@ def _get_model_data(model_id: str) -> ModelData:
     return model_data
 
 
-def generate_auth_token(user: str = 'user', password_length: int = 16) -> Tuple[str, str, str]:
-    alphabet = string.ascii_letters + string.digits
-    password = ''.join(secrets.choice(alphabet) for _ in range(password_length))
-    return (user, password, b64encode(f'{user}:{password}'))
+def generate_auth_token(password_length: int = 16) -> str:
+    return b64encode(secrets.token_bytes(password_length)).decode('ascii')
 
 
-def create_app(auth_token: str, backend_url: str) -> Flask:
+def create_app(accepted_auth_token: str, backend_completions_url: str) -> Flask:
     app = Flask(__name__)
 
-    def authorization_required(f):
-        @wraps(f)
-        def decorator(*args, **kwargs):
-            try:
-                (request_scheme, request_token) = request.headers['Authorization'].split(' ')
-                if request_scheme != 'Bearer':
-                    raise Exception(f'Expected Bearer authorization scheme but got {request_scheme}')
-            except Exception:
-                return make_response(jsonify({'message': 'Valid authorization bearer token is missing'}), 401)
+    # We use CORS just to facilitate development and debugging
+    CORS(app)
 
-            if request_token != auth_token:
-                return make_response(jsonify({'message': 'Invalid authorization bearer token'}), 401)
+    basic_auth = HTTPBasicAuth()
+    token_auth = HTTPTokenAuth(scheme='Bearer')
+    multi_auth = MultiAuth(basic_auth, token_auth)
 
-            return f(*args, **kwargs)
+    @basic_auth.verify_password
+    def verify_password(username, password):
+        return password == accepted_auth_token
 
-        return decorator
+    @token_auth.verify_token
+    def verify_token(token):
+        return token == accepted_auth_token
+
+    def auth_error(status):
+        return make_response((
+            {
+                'error': {
+                    'message': 'Invalid credentials (API key or password) or no credentials provided.',
+                    'type': 'invalid_request_error',
+                    'param': None,
+                    'code': None,
+                },
+            },
+            status,
+        ))
+
+    basic_auth.error_handler(auth_error)
+    token_auth.error_handler(auth_error)
 
     @app.route('/v1/models')
-    @authorization_required
+    @multi_auth.login_required
     def get_models():
         return jsonify({
             'data': MODELS,
@@ -107,93 +114,18 @@ def create_app(auth_token: str, backend_url: str) -> Flask:
         })
 
     @app.route('/v1/model/<model>')
-    @authorization_required
+    @multi_auth.login_required
     def get_model(model):
         return jsonify(_get_model_data(model))
 
     @app.route('/v1/completions', methods=['POST'])
-    @authorization_required
+    @multi_auth.login_required
     def post_completions():
         stream = request.json.get('stream', False)
-        if stream:
-            return Response(
-                (f'data: {event_data}\n\n' for event_data in [
-                    json.dumps({
-                        'id': response_id,
-                        'object': 'text_completion',
-                        'created': created,
-                        'choices': [{'text': '\n', 'index': 0, 'logprobs': None, 'finish_reason': None}],
-                        'model': model_id
-                    }),
-                    json.dumps({
-                        'id': response_id,
-                        'object': 'text_completion',
-                        'created': created,
-                        'choices': [{'text': '\n', 'index': 0, 'logprobs': None, 'finish_reason': None}],
-                        'model': model_id
-                    }),
-                    json.dumps({
-                        'id': response_id,
-                        'object': 'text_completion',
-                        'created': created,
-                        'choices': [{'text': 'This', 'index': 0, 'logprobs': None, 'finish_reason': None}],
-                        'model': model_id
-                    }),
-                    json.dumps({
-                        'id': response_id,
-                        'object': 'text_completion',
-                        'created': created,
-                        'choices': [{'text': ' is', 'index': 0, 'logprobs': None, 'finish_reason': None}],
-                        'model': model_id
-                    }),
-                    json.dumps({
-                        'id': response_id,
-                        'object': 'text_completion',
-                        'created': created,
-                        'choices': [{'text': ' a', 'index': 0, 'logprobs': None, 'finish_reason': None}],
-                        'model': model_id
-                    }),
-                    json.dumps({
-                        'id': response_id,
-                        'object': 'text_completion',
-                        'created': created,
-                        'choices': [{'text': ' test', 'index': 0, 'logprobs': None, 'finish_reason': None}],
-                        'model': model_id
-                    }),
-                    json.dumps({
-                        'id': response_id,
-                        'object': 'text_completion',
-                        'created': created,
-                        'choices': [{'text': '.', 'index': 0, 'logprobs': None, 'finish_reason': None}],
-                        'model': model_id
-                    }),
-                    json.dumps({
-                        'id': response_id,
-                        'object': 'text_completion',
-                        'created': created,
-                        'choices': [{'text': '', 'index': 0, 'logprobs': None, 'finish_reason': FINISH_REASON_EOS}],
-                        'model': model_id
-                    }),
-                    END_OF_STREAM,
-                ]),
-                mimetype='text/event-stream',
-            )
-        else:
-            return jsonify({
-                'id': response_id,
-                'object': 'text_completion',
-                'created': created,
-                'model': model_id,
-                'choices': [
-                    {
-                        'text': '\n\nThis is a test.',
-                        'index': 0,
-                        'logprobs': None,
-                        'finish_reason': FINISH_REASON_EOS,
-                    }
-                ],
-                'usage': {'prompt_tokens': 0, 'completion_tokens': 0, 'total_tokens': 0},
-            })
+        with requests.post(backend_completions_url, json=request.json, stream=stream) as r:
+            return Response(r.iter_content(chunk_size=None),
+                            status=r.status_code,
+                            content_type=r.headers['content-type'])
 
     return app
 
@@ -204,14 +136,14 @@ def main():
         description='Run a clone of OpenAI\'s API Service in your Local Environment',
         formatter_class=ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument('backend_url',
-                        help='URL of backend language model service')
+    parser.add_argument('backend_completions_url',
+                        help='URL of backend text completion endpoint')
     parser.add_argument('--host', default='0.0.0.0',
                         help='Hostname or IP to serve on')
     parser.add_argument('-p', '--port', type=int, default=8000,
                         help='Port to serve on')
     parser.add_argument('--auth-token',
-                        help='Base-64--encoded authorization token (API key); '
+                        help='Base-64--encoded authorization token (API key) to accept; '
                              'if not specified, one will be generated on startup.')
     parser.add_argument('-l', '--log-level',
                         choices=('CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'), default='INFO',
@@ -222,14 +154,13 @@ def main():
                         level=args.log_level)
 
     if args.auth_token is not None:
-        (user, password, auth_token) = generate_auth_token()
-        logging.info(f'Generated authorization token user: {user}')
-        logging.info(f'Generated authorization token password: {password}')
-    else:
         auth_token = args.auth_token
-    logging.info(f'Authorization token: {auth_token}')
+        logging.info(f'Authorization token (API key): {auth_token}')
+    else:
+        auth_token = generate_auth_token()
+        logging.info(f'Generated authorization token (API key): {auth_token}')
 
-    app = create_app(auth_token=auth_token, backend_url=args.backend_url)
+    app = create_app(accepted_auth_token=auth_token, backend_completions_url=args.backend_completions_url)
     serve(app, host=args.host, port=args.port)
 
 
