@@ -25,43 +25,6 @@ MODELS = [
     } for size in ('125m', '350m', '1.3b', '2.7b')
 ]
 
-EXAMPLE_TEXT = '''\
-I am a highly intelligent question answering bot. If you ask me a question that can be answered with one or more \
-spans exactly from the given context, I will give you the answer. If you ask me a question that has no answer within \
-the context, I will respond with "Unknown". An example is given below.
-
-Context: "Thousands of people rallied in Seoul – at this mass protest, people called for President Park Geun-hye to \
-step down, at another rally pro-Park protesters gathered in the South Korean capital.  A constitutional court is set \
-to decide her fate later this month.  I came here out of rage towards President Park Geun-hye, said one of the \
-protesters, angry at what he said were the president's constant lies.  It would have been better if this situation \
-had not happened at all, admitted an anti-Park protester.  But due to the situation, people's political awareness \
-has heightened, and (people) have been given an opportunity to judge for themselves, the direction of politics, he \
-added. The president was impeached by the General Assembly in December over accusations of bribery and abuse of \
-office.  Analysts believe the Constitutional Court will uphold the motion, which would mean fresh elections must be \
-held within 60 days of the court's decision."
-
-Q: Who is protesting?
-A: Thousands of people; people; pro-Park protestors;
-
-Q: Where is the protest?
-A: Seoul; South Korean; the South Korean capital;
-
-Q: When was the protest?
-A: Unknown
-
-Q: What was the protest against?
-A: President Park Geun-hye; Park; her; the president;
-
-Context: "Workers across Asia mark May Day Indo Asian News Service IANS India Private Limited1 May 2017 Jakarta, May \
-1 (IANS) Thousands across Asia marked May Day or International Workers' Day on Monday by holding rallies and \
-demanding better wages and working rights.  In Jakarta, more than 10,000 workers gathered in a rally to protest \
-President Joko Widodo's labour policies, Efe news reported.  They were stopped by a road block police set up about \
-500 metres from the presidential palace, manned by around 1,000 anti-riot police officers."
-
-Q: Who is protesting?
-A:\
-'''
-
 
 def _get_model_data(model_id: str) -> ModelData:
     [model_data] = [md for md in MODELS if md['id'] == model_id]
