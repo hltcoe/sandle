@@ -37,8 +37,16 @@
               {{ completionsAlert }}
             </div>
             <div class="my-3">
-              <button v-if="!runningCompletions" type="submit" class="btn btn-primary">Submit</button>
-              <button v-else type="submit" class="btn btn-primary disabled">Working</button>
+              <button
+                v-if="!runningCompletions"
+                type="submit"
+                class="btn btn-primary"
+              >
+                Submit
+              </button>
+              <button v-else type="submit" class="btn btn-primary disabled">
+                Working
+              </button>
             </div>
           </form>
         </div>
