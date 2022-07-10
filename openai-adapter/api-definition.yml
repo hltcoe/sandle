@@ -1,0 +1,198 @@
+openapi: 3.0.0
+info:
+  description: >
+    A partial clone of the OpenAI API for OPT on HuggingFace in your local environment.
+  version: 0.0.1
+  title: OpenAisle
+  contact:
+    name: HLTCOE
+  license:
+    name: BSD 2-Clause License
+    url: https://spdx.org/licenses/BSD-2-Clause.html
+security:
+  - basic: []
+  - bearer: []
+paths:
+  /v1/models:
+    get:
+      summary: Get a list of models available
+      operationId: getModels
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Model'
+        '401':
+          description: Invalid authorization
+  /v1/models/{model}:
+    get:
+      summary: Get model info by ID
+      operationId: getModel
+      parameters:
+        - name: model
+          in: path
+          description: Model ID to look up
+          required: true
+          content:
+            application/json:
+              schema:
+                type: string
+                example: facebook/opt-1.3b
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Model'
+        '400':
+          description: Invalid model ID
+        '401':
+          description: Invalid authorization
+  /v1/completions:
+    post:
+      summary: Generate text completions
+      operationId: completions
+      requestBody:
+        description: Text to complete and parameters
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Prompt'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Completion'
+        '400':
+          description: Invalid request specification
+        '401':
+          description: Invalid authorization
+components:
+  schemas:
+    Model:
+      type: object
+      properties:
+        id:
+          type: string
+          example: facebook/opt-1.3b
+        object:
+          type: string
+          enum:
+            - model
+        owned_by:
+          type: string
+          example: facebook
+        permissions:
+          type: array
+          items:
+            type: string
+    Prompt:
+      type: object
+      properties:
+        id:
+          description: ID of model to use
+          type: string
+        prompt:
+          description: >-
+            Prompt to complete
+          type: string
+          default: </s>
+        max_tokens:
+          description: Maximum number of tokens to generate per completion
+          type: integer
+          format: int64
+          minimum: 1
+          default: 16
+        stream:
+          description: >-
+            Whether to stream completed text as it is
+            produced, via server-side events, or wait
+            and return it all at once
+          type: boolean
+          default: false
+        stop:
+          description: Sequence or sequences that will end generation early
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+          nullable: true
+          default: null
+        user:
+          description: An identifier for the user of the API, for debugging purposes
+          type: string
+          nullable: true
+          default: null
+    Completion:
+      type: object
+      properties:
+        id:
+          description: Identifier assigned to this text completion
+          type: string
+        object:
+          description: Type of object
+          type: string
+          enum: [text_completion]
+        created:
+          description: Timestamp when text completion was created
+          type: integer
+          format: int64
+          minimum: 0
+        model:
+          description: Identifier of model used to generate completion
+          type: string
+        choices:
+          description: Text completions generated
+          type: array
+          items:
+            type: object
+            properties:
+              text:
+                description: Text generated to complete prompt
+                type: string
+              index:
+                type: integer
+                format: int64
+                minimum: 0
+              logprobs:
+                type: object
+                nullable: true
+              finish_reason:
+                description: Short text code indicating why generation was stopped
+                type: string
+                enum: [stop, length]
+              usage:
+                description: Resources used for this request
+                type: object
+                properties:
+                  prompt_tokens:
+                    type: integer
+                    format: int64
+                    minimum: 0
+                  completion_tokens:
+                    type: integer
+                    format: int64
+                    minimum: 0
+                  total_tokens:
+                    type: integer
+                    format: int64
+                    minimum: 0
+  securitySchemes:
+    basic:
+      type: http
+      scheme: basic
+    bearer:
+      type: http
+      scheme: bearer
+externalDocs:
+  description: OpenAisle repository on GitHub
+  url: http://github.com/hltcoe/openaisle
