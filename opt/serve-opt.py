@@ -2,7 +2,7 @@ import json
 import logging
 from itertools import chain
 from time import time
-from typing import Any, Dict, Iterable, NamedTuple, Optional, Tuple
+from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple
 from uuid import uuid4
 
 from flask import Flask, jsonify, Response, request
@@ -26,7 +26,9 @@ class Completion(NamedTuple):
 
 class RawCompletion(NamedTuple):
     text: str
-    num_new_tokens: int
+    pretruncation_num_new_tokens: int
+    new_text: str
+    truncated: bool
 
 
 def clean_output_text(text: str) -> str:
@@ -40,6 +42,16 @@ def generate_response_id() -> str:
 
 def get_timestamp() -> int:
     return int(time())
+
+
+def truncate_at_stops(text: str, stop_strings: List[str]) -> Tuple[str, bool]:
+    truncated = False
+    for s in stop_strings:
+        index = text.find(s)
+        if index >= 0:
+            text = text[:index]
+            truncated = True
+    return (text, truncated)
 
 
 class LM:
@@ -60,24 +72,18 @@ class LM:
         return self.models[model_id]
 
     def complete(self, text: str, model_id: str,
-                 stop_strings: Iterable[str],
+                 stop_strings: List[str],
                  max_new_tokens: int = STREAM_TOKEN_BATCH_SIZE) -> Completion:
         (tokenizer, model) = self.get_tokenizer_and_model(model_id)
 
-        raw_completion = self._complete(text, tokenizer, model, max_new_tokens)
-        output_text = raw_completion.text
+        raw_completion = self._complete(text, tokenizer, model, stop_strings, max_new_tokens)
 
-        finish_reason = FINISH_REASON_LENGTH
-        for s in stop_strings:
-            index = output_text.find(s)
-            if index >= 0:
-                output_text = output_text[:index]
-                finish_reason = FINISH_REASON_EOS
+        finish_reason = FINISH_REASON_EOS if raw_completion.truncated else FINISH_REASON_LENGTH
 
-        return Completion(output_text, finish_reason)
+        return Completion(raw_completion.text, finish_reason)
 
     def stream_complete(self, text: str, model_id: str,
-                        stop_strings: Iterable[str],
+                        stop_strings: List[str],
                         max_new_tokens: int = DEFAULT_MAX_TOKENS,
                         token_batch_size: int = STREAM_TOKEN_BATCH_SIZE) -> Iterable[Completion]:
         (tokenizer, model) = self.get_tokenizer_and_model(model_id)
@@ -86,32 +92,40 @@ class LM:
         finish_reason = None
         while finish_reason is None:
             raw_completion = self._complete(
-                text, tokenizer, model, min(token_batch_size, max_new_tokens - num_new_tokens)
+                text, tokenizer, model, stop_strings,
+                min(token_batch_size, max_new_tokens - num_new_tokens),
             )
-            output_text = raw_completion.text
-            num_new_tokens += raw_completion.num_new_tokens
 
-            if not output_text.startswith(text):
-                raise Exception(f'Generated text "{output_text}" does begin with input text "{text}"')
+            if raw_completion.truncated:
+                finish_reason = FINISH_REASON_EOS
+            else:
+                num_new_tokens += raw_completion.pretruncation_num_new_tokens
+                if num_new_tokens >= max_new_tokens:
+                    if num_new_tokens > max_new_tokens:
+                        logging.warning('Generated more tokens than the max number specified')
+                    finish_reason = FINISH_REASON_LENGTH
 
-            for s in stop_strings:
-                index = output_text.find(s)
-                if index >= 0:
-                    output_text = output_text[:index]
-                    finish_reason = FINISH_REASON_EOS
-            if finish_reason is None and num_new_tokens == max_new_tokens:
-                finish_reason = FINISH_REASON_LENGTH
+            yield Completion(raw_completion.new_text, finish_reason)
 
-            yield Completion(output_text[len(text):], finish_reason)
-
-            text = output_text
+            text = raw_completion.text
 
     def _complete(self, text: str, tokenizer: AutoTokenizer, model: AutoModelForCausalLM,
-                  max_new_tokens: int) -> RawCompletion:
+                  stop_strings: List[str], max_new_tokens: int) -> RawCompletion:
         input_token_ids = tokenizer(text, return_tensors='pt')['input_ids']
         output_token_ids = model.generate(input_token_ids, max_new_tokens=max_new_tokens)
         output_text = clean_output_text(tokenizer.decode(output_token_ids[0].tolist()))
-        return RawCompletion(output_text, output_token_ids.size(dim=1) - input_token_ids.size(dim=1))
+        if output_text.startswith(text):
+            new_text = output_text[len(text):]
+            (new_text, truncated) = truncate_at_stops(new_text, stop_strings)
+            output_text = text + new_text
+            return RawCompletion(
+                text=output_text,
+                pretruncation_num_new_tokens=output_token_ids.size(dim=1) - input_token_ids.size(dim=1),
+                new_text=new_text,
+                truncated=truncated,
+            )
+        else:
+            raise Exception(f'Generated text "{output_text}" does begin with input text "{text}"')
 
 
 def make_api_completion(response_id: str, created: int, model_id: str, completion: Completion) -> Dict[str, Any]:
