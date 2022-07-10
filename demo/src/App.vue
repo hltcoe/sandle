@@ -161,9 +161,9 @@
                 HuggingFace.
               </p>
               <a
-                href="https://app.swaggerhub.com/apis-docs/hltcoe/OpenAisle/0.0.1"
+                href="https://hltcoe.github.io/openaisle/"
                 class="card-link"
-                >Read API docs on SwaggerHub</a
+                >Read API docs</a
               >
             </div>
           </div>
