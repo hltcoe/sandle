@@ -3,18 +3,35 @@
   <div class="container my-5">
     <header class="my-4">
       <h1>HuggingFace OPT API Demo &#x1F495;</h1>
-      <h6 class="text-muted">This web app uses a subset of the OpenAI API to communicate with a local deployment of OPT on HuggingFace.</h6>
+      <h6 class="text-muted">
+        This web app uses a subset of the OpenAI API to communicate with a local
+        deployment of OPT on HuggingFace.
+      </h6>
     </header>
 
-    <a class="github-fork-ribbon position-absolute position-top-0 position-end-0" href="https://github.com/JHU-CLSP/openaisle" data-ribbon="Fork me on GitHub" title="Fork me on GitHub">Fork me on GitHub</a>
+    <a
+      class="github-fork-ribbon position-absolute position-top-0 position-end-0"
+      href="https://github.com/JHU-CLSP/openaisle"
+      data-ribbon="Fork me on GitHub"
+      title="Fork me on GitHub"
+      >Fork me on GitHub</a
+    >
 
     <main>
       <div class="row">
         <div class="col-8">
           <form class="my-3" @submit.prevent="onSubmit(text)">
             <div class="my-3">
-              <label class="form-label">Enter some text, then click "Submit" to generate a completion.</label>
-              <textarea class="form-control" rows="10" placeholder="Say this is a test." v-model="text" />
+              <label class="form-label"
+                >Enter some text, then click "Submit" to generate a
+                completion.</label
+              >
+              <textarea
+                class="form-control"
+                rows="10"
+                placeholder="Say this is a test."
+                v-model="text"
+              />
             </div>
             <div class="my-3 alert alert-danger" v-if="completionsAlert">
               {{ completionsAlert }}
@@ -86,8 +103,15 @@
           <div class="card">
             <div class="card-body">
               <h6 class="card-title">Issues?</h6>
-              <p class="card-text">If something doesn't work, or if something could work better, please let us know!</p>
-              <a href="https://github.com/JHU-CLSP/openaisle/issues/new" class="card-link">Create issue on GitHub</a>
+              <p class="card-text">
+                If something doesn't work, or if something could work better,
+                please let us know!
+              </p>
+              <a
+                href="https://github.com/JHU-CLSP/openaisle/issues/new"
+                class="card-link"
+                >Create issue on GitHub</a
+              >
             </div>
           </div>
         </div>
@@ -95,8 +119,15 @@
           <div class="card">
             <div class="card-body">
               <h6 class="card-title">API Documentation</h6>
-              <p class="card-text">A subset of the OpenAI API is currently implemented on top of HuggingFace.</p>
-              <a href="https://app.swaggerhub.com/apis-docs/hltcoe/OpenAisle/0.0.1" class="card-link">Read API docs on SwaggerHub</a>
+              <p class="card-text">
+                A subset of the OpenAI API is currently implemented on top of
+                HuggingFace.
+              </p>
+              <a
+                href="https://app.swaggerhub.com/apis-docs/hltcoe/OpenAisle/0.0.1"
+                class="card-link"
+                >Read API docs on SwaggerHub</a
+              >
             </div>
           </div>
         </div>
@@ -105,7 +136,9 @@
             <div class="card-body">
               <h6 class="card-title">Source Code</h6>
               <p class="card-text">Want to use or modify this code?</p>
-              <a href="https://github.com/JHU-CLSP/openaisle" class="card-link">Go to GitHub repository</a>
+              <a href="https://github.com/JHU-CLSP/openaisle" class="card-link"
+                >Go to GitHub repository</a
+              >
             </div>
           </div>
         </div>
@@ -211,7 +244,12 @@ export default {
         }/v1/completions`;
         const response = await axios.post(
           url,
-          { model: this.modelId, prompt: text, max_tokens: this.maxNewTokens, stop: this.stop ? this.stop : null },
+          {
+            model: this.modelId,
+            prompt: text,
+            max_tokens: this.maxNewTokens,
+            stop: this.stop ? this.stop : null,
+          },
           { headers: this.openAisleHeaders }
         );
         return response.data;
