@@ -37,7 +37,8 @@
               {{ completionsAlert }}
             </div>
             <div class="my-3">
-              <button type="submit" class="btn btn-primary">Submit</button>
+              <button v-if="!runningCompletions" type="submit" class="btn btn-primary">Submit</button>
+              <button v-else type="submit" class="btn btn-primary disabled">Working</button>
             </div>
           </form>
         </div>
@@ -185,6 +186,7 @@ export default {
       maxNewTokens: 20,
       text: "",
       completionsAlert: null,
+      runningCompletions: false,
     };
   },
   computed: {
@@ -244,6 +246,7 @@ export default {
         const url = `http://${import.meta.env.VITE_OPENAISLE_HOST}:${
           import.meta.env.VITE_OPENAISLE_PORT
         }/v1/completions`;
+        this.runningCompletions = true;
         const response = await axios.post(
           url,
           {
@@ -259,6 +262,8 @@ export default {
         console.log(e);
         this.completionsAlert = formatAxiosError(e);
         return null;
+      } finally {
+        this.runningCompletions = false;
       }
     },
   },

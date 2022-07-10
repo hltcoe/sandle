@@ -1,6 +1,7 @@
 import logging
 import secrets
 from base64 import b64encode
+from functools import wraps
 from typing import Any, Dict
 
 import requests
@@ -71,6 +72,19 @@ def generate_auth_token(password_length: int = 16) -> str:
     return b64encode(secrets.token_bytes(password_length)).decode('ascii')
 
 
+# flask-httpauth is super helpful and sets WWW-Authenticate to prompt the
+# user for a password, but we want to handle authentication ourselves, so we
+# in and remove it
+def strip_www_authenticate_header(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        res = f(*args, **kwargs)
+        if 'WWW-Authenticate' in res.headers:
+            del res.headers['WWW-Authenticate']
+        return res
+    return decorated
+
+
 def create_app(accepted_auth_token: str, backend_completions_url: str) -> Flask:
     app = Flask(__name__)
 
@@ -106,6 +120,7 @@ def create_app(accepted_auth_token: str, backend_completions_url: str) -> Flask:
     token_auth.error_handler(auth_error)
 
     @app.route('/v1/models')
+    @strip_www_authenticate_header
     @multi_auth.login_required
     def get_models():
         return jsonify({
@@ -114,11 +129,13 @@ def create_app(accepted_auth_token: str, backend_completions_url: str) -> Flask:
         })
 
     @app.route('/v1/model/<model>')
+    @strip_www_authenticate_header
     @multi_auth.login_required
     def get_model(model):
         return jsonify(_get_model_data(model))
 
     @app.route('/v1/completions', methods=['POST'])
+    @strip_www_authenticate_header
     @multi_auth.login_required
     def post_completions():
         stream = request.json.get('stream', False)
