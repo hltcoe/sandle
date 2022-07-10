@@ -2,7 +2,7 @@ import logging
 import secrets
 from base64 import b64encode
 from functools import wraps
-from typing import Any, Dict, Optional
+from typing import Any, cast, Dict, Optional
 
 import requests
 from flask import Flask, jsonify, make_response, Response, request
@@ -24,11 +24,14 @@ MODELS = [
         'permission': [],
     } for size in ('125m', '350m', '1.3b', '2.7b')
 ]
-MODELS_DICT = dict((m['id'], m) for m in MODELS)
 
 
-def _get_model_data(model_id: str) -> Optional[ModelData]:
-    return MODELS_DICT.get(model_id)
+def get_models_dict() -> Dict[str, ModelData]:
+    return cast(Dict[str, ModelData], dict((m['id'], m) for m in MODELS))
+
+
+def get_model_data(model_id: str) -> Optional[ModelData]:
+    return get_models_dict().get(model_id)
 
 
 def generate_auth_token(password_length: int = 16) -> str:
@@ -104,7 +107,7 @@ def create_app(accepted_auth_token: str, backend_completions_url: str) -> Flask:
     @strip_www_authenticate_header
     @multi_auth.login_required
     def get_model(model):
-        model_data = _get_model_data(model)
+        model_data = get_model_data(model)
         if model_data is None:
             return make_error_response(
                 401,
@@ -118,7 +121,7 @@ def create_app(accepted_auth_token: str, backend_completions_url: str) -> Flask:
     @strip_www_authenticate_header
     @multi_auth.login_required
     def post_completions():
-        model_data = _get_model_data(request.json.get('model'))
+        model_data = get_model_data(request.json.get('model'))
         if model_data is None:
             return make_error_response(
                 401,
@@ -150,6 +153,9 @@ def main():
     parser.add_argument('--auth-token',
                         help='Base-64--encoded authorization token (API key) to accept; '
                              'if not specified, one will be generated on startup.')
+    parser.add_argument('--single-model',
+                        choices=tuple(m['id'] for m in MODELS),
+                        help='Allow only the specified model to be used.')
     parser.add_argument('-l', '--log-level',
                         choices=('CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'), default='INFO',
                         help='Logging verbosity level threshold (to stderr)')
@@ -164,6 +170,12 @@ def main():
     else:
         auth_token = generate_auth_token()
         logging.info(f'Generated authorization token (API key): {auth_token}')
+
+    if args.single_model is not None:
+        logging.info(f'Allowing only one model to be used: {args.single_model}')
+        models_to_remove = [m for m in MODELS if m['id'] != args.single_model]
+        for model_to_remove in models_to_remove:
+            MODELS.remove(model_to_remove)
 
     app = create_app(accepted_auth_token=auth_token, backend_completions_url=args.backend_completions_url)
     serve(app, host=args.host, port=args.port)
