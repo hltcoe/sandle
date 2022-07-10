@@ -2,7 +2,7 @@ import logging
 import secrets
 from base64 import b64encode
 from functools import wraps
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import requests
 from flask import Flask, jsonify, make_response, Response, request
@@ -24,11 +24,11 @@ MODELS = [
         'permission': [],
     } for size in ('125m', '350m', '1.3b', '2.7b')
 ]
+MODELS_DICT = dict((m['id'], m) for m in MODELS)
 
 
-def _get_model_data(model_id: str) -> ModelData:
-    [model_data] = [md for md in MODELS if md['id'] == model_id]
-    return model_data
+def _get_model_data(model_id: str) -> Optional[ModelData]:
+    return MODELS_DICT.get(model_id)
 
 
 def generate_auth_token(password_length: int = 16) -> str:
@@ -46,6 +46,21 @@ def strip_www_authenticate_header(f):
             del res.headers['WWW-Authenticate']
         return res
     return decorated
+
+
+def make_error_response(status: int, message: str, error_type: str,
+                        param: Optional[Any] = None, code: Optional[str] = None) -> Response:
+    return make_response((
+        {
+            'error': {
+                'message': message,
+                'type': error_type,
+                'param': param,
+                'code': code,
+            },
+        },
+        status,
+    ))
 
 
 def create_app(accepted_auth_token: str, backend_completions_url: str) -> Flask:
@@ -67,17 +82,11 @@ def create_app(accepted_auth_token: str, backend_completions_url: str) -> Flask:
         return token == accepted_auth_token
 
     def auth_error(status):
-        return make_response((
-            {
-                'error': {
-                    'message': 'Invalid credentials (API key or password) or no credentials provided.',
-                    'type': 'invalid_request_error',
-                    'param': None,
-                    'code': None,
-                },
-            },
+        return make_error_response(
             status,
-        ))
+            'Invalid credentials (API key or password) or no credentials provided',
+            'invalid_request_error',
+        )
 
     basic_auth.error_handler(auth_error)
     token_auth.error_handler(auth_error)
@@ -95,17 +104,33 @@ def create_app(accepted_auth_token: str, backend_completions_url: str) -> Flask:
     @strip_www_authenticate_header
     @multi_auth.login_required
     def get_model(model):
-        return jsonify(_get_model_data(model))
+        model_data = _get_model_data(model)
+        if model_data is None:
+            return make_error_response(
+                401,
+                'That model does not exist',
+                'invalid_request_error',
+            )
+        else:
+            return jsonify(model_data)
 
     @app.route('/v1/completions', methods=['POST'])
     @strip_www_authenticate_header
     @multi_auth.login_required
     def post_completions():
-        stream = request.json.get('stream', False)
-        with requests.post(backend_completions_url, json=request.json, stream=stream) as r:
-            return Response(r.iter_content(chunk_size=None),
-                            status=r.status_code,
-                            content_type=r.headers['content-type'])
+        model_data = _get_model_data(request.json.get('model'))
+        if model_data is None:
+            return make_error_response(
+                401,
+                'That model does not exist',
+                'invalid_request_error',
+            )
+        else:
+            stream = request.json.get('stream', False)
+            with requests.post(backend_completions_url, json=request.json, stream=stream) as r:
+                return Response(r.iter_content(chunk_size=None),
+                                status=r.status_code,
+                                content_type=r.headers['content-type'])
 
     return app
 
