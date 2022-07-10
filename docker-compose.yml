@@ -24,6 +24,8 @@ services:
     command:
       - --port
       - '8000'
+      - --preload-model
+      - facebook/opt-2.7b
     restart: unless-stopped
     #deploy:
     #  resources:
