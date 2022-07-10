@@ -5,6 +5,7 @@ from time import time
 from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple
 from uuid import uuid4
 
+import torch
 from flask import Flask, jsonify, Response, request
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from waitress import serve
@@ -56,9 +57,11 @@ def truncate_at_stops(text: str, stop_strings: List[str]) -> Tuple[str, bool]:
 
 class LM:
     models: Dict[str, Tuple[AutoTokenizer, AutoModelForCausalLM]]
+    device: str
 
     def __init__(self, preload_model: Optional[str] = None):
         self.models = {}
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         if preload_model is not None:
             self.get_tokenizer_and_model(preload_model)
 
@@ -68,6 +71,7 @@ class LM:
             tokenizer = AutoTokenizer.from_pretrained(model_id)
             model = AutoModelForCausalLM.from_pretrained(model_id)
             model.eval()
+            model.to(self.device)
             self.models[model_id] = (tokenizer, model)
         return self.models[model_id]
 
@@ -112,7 +116,7 @@ class LM:
     def _complete(self, text: str, tokenizer: AutoTokenizer, model: AutoModelForCausalLM,
                   stop_strings: List[str], max_new_tokens: int) -> RawCompletion:
         input_token_ids = tokenizer(text, return_tensors='pt')['input_ids']
-        output_token_ids = model.generate(input_token_ids, max_new_tokens=max_new_tokens)
+        output_token_ids = model.generate(input_token_ids.to(self.device), max_new_tokens=max_new_tokens)
         output_text = clean_output_text(tokenizer.decode(output_token_ids[0].tolist()))
         if output_text.startswith(text):
             new_text = output_text[len(text):]

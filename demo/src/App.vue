@@ -37,7 +37,8 @@
               {{ completionsAlert }}
             </div>
             <div class="my-3">
-              <button type="submit" class="btn btn-primary">Submit</button>
+              <button v-if="!runningCompletions" type="submit" class="btn btn-primary">Submit</button>
+              <button v-else type="submit" class="btn btn-primary disabled">Working</button>
             </div>
           </form>
         </div>
@@ -160,6 +161,8 @@ function formatAxiosError(e) {
       return "Invalid authorization.";
     } else if (e.response.status === 403) {
       return "Authorization is not sufficient.";
+    } else if (e.response.status === 504) {
+      return "Request timed out.";
     } else if (e.response.status > 0) {
       return `HTTP ${e.response.status}: ${e.response.data}`;
     } else {
@@ -176,13 +179,14 @@ export default {
   data() {
     return {
       apiKey: null,
-      modelId: null,
+      modelId: "facebook/opt-2.7b",
       models: null,
       modelsAlert: null,
       stop: "Q:",
       maxNewTokens: 20,
       text: "",
       completionsAlert: null,
+      runningCompletions: false,
     };
   },
   computed: {
@@ -208,6 +212,8 @@ export default {
         } else {
           this.modelId = this.models[0].id;
         }
+      } else {
+        this.modelId = previousModelId;
       }
     },
     async onSubmit(text) {
@@ -242,6 +248,7 @@ export default {
         const url = `http://${import.meta.env.VITE_OPENAISLE_HOST}:${
           import.meta.env.VITE_OPENAISLE_PORT
         }/v1/completions`;
+        this.runningCompletions = true;
         const response = await axios.post(
           url,
           {
@@ -257,6 +264,8 @@ export default {
         console.log(e);
         this.completionsAlert = formatAxiosError(e);
         return null;
+      } finally {
+        this.runningCompletions = false;
       }
     },
   },
