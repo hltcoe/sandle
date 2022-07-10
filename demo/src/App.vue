@@ -52,7 +52,9 @@
         </div>
         <div class="col-4">
           <div class="m-3">
-            <label class="form-label" for="api-key-input">API key</label>
+            <label class="form-label" for="api-key-input">
+              API key
+            </label>
             <div class="d-flex">
               <input
                 type="text"
@@ -75,7 +77,9 @@
             {{ modelsAlert }}
           </div>
           <div class="m-3" v-if="models">
-            <label class="form-label" for="model-input">Model</label>
+            <label class="form-label" for="model-input">
+              Model
+            </label>
             <select class="form-select" id="model-input" v-model="modelId">
               <option v-for="model in models" :key="model.id">
                 {{ model.id }}
@@ -83,7 +87,9 @@
             </select>
           </div>
           <div class="m-3">
-            <label class="form-label" for="stop-input">Stop sequence</label>
+            <label class="form-label" for="stop-input">
+              Stop sequence
+            </label>
             <input
               type="text"
               class="form-control"
@@ -92,15 +98,37 @@
             />
           </div>
           <div class="m-3">
-            <label class="form-label" for="max-new-tokens-input"
-              >Max. new tokens</label
-            >
+            <label class="form-label" for="max-new-tokens-input">
+              Max. new tokens
+            </label>
             <input
               type="text"
               pattern="[1-9][0-9]*"
               class="form-control"
               id="max-new-tokens-input"
               v-model.number="maxNewTokens"
+            />
+          </div>
+          <div class="m-3">
+            <input
+              type="checkbox"
+              class="form-check-input me-1"
+              id="strip-trailing-whitespace-input"
+              v-model="stripTrailingWhitespace"
+            />
+            <label class="form-check-label" for="strip-trailing-whitespace-input">
+              Strip trailing whitespace
+            </label>
+          </div>
+          <div class="m-3">
+            <label class="form-label" for="completion-suffix-json-input">
+              Completion suffix
+            </label>
+            <input
+              type="text"
+              class="form-control"
+              id="completion-suffix-json-input"
+              v-model="completionSuffixJSONString"
             />
           </div>
         </div>
@@ -195,6 +223,8 @@ export default {
       text: "",
       completionsAlert: null,
       runningCompletions: false,
+      stripTrailingWhitespace: true,
+      completionSuffixJSONString: "\\n\\nQ: ",
     };
   },
   computed: {
@@ -206,6 +236,9 @@ export default {
         "Content-Type": "application/json",
         Authorization: `Bearer ${this.safeAPIKey}`,
       };
+    },
+    completionSuffix() {
+      return JSON.parse('"' + this.completionSuffixJSONString + '"');
     },
   },
   methods: {
@@ -230,7 +263,10 @@ export default {
       if (completions !== null) {
         const generatedText = completions.choices[0].text;
         if (generatedText !== null) {
-          this.text = generatedText;
+          this.text =
+            (this.stripTrailingWhitespace
+              ? generatedText.trimEnd()
+              : generatedText) + this.completionSuffix;
         }
       }
     },
