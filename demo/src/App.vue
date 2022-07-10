@@ -211,7 +211,7 @@ export default {
         }/v1/completions`;
         const response = await axios.post(
           url,
-          { model: this.modelId, prompt: text, max_tokens: this.maxNewTokens, stop: this.stop },
+          { model: this.modelId, prompt: text, max_tokens: this.maxNewTokens, stop: this.stop ? this.stop : null },
           { headers: this.openAisleHeaders }
         );
         return response.data;
