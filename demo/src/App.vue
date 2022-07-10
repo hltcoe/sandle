@@ -179,7 +179,7 @@ export default {
   data() {
     return {
       apiKey: null,
-      modelId: null,
+      modelId: "facebook/opt-2.7b",
       models: null,
       modelsAlert: null,
       stop: "Q:",
@@ -212,6 +212,8 @@ export default {
         } else {
           this.modelId = this.models[0].id;
         }
+      } else {
+        this.modelId = previousModelId;
       }
     },
     async onSubmit(text) {
