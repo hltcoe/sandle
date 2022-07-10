@@ -1,68 +1,218 @@
+
+<template>
+  <div class="container my-5">
+    <header class="my-4">
+      <h1>HuggingFace OPT API Demo &#x1F495;</h1>
+      <h6 class="text-muted">This web app uses a subset of the OpenAI API to communicate with a local deployment of OPT on HuggingFace.</h6>
+    </header>
+
+    <a class="github-fork-ribbon position-absolute position-top-0 position-end-0" href="https://github.com/JHU-CLSP/openaisle" data-ribbon="Fork me on GitHub" title="Fork me on GitHub">Fork me on GitHub</a>
+
+    <main>
+      <div class="row">
+        <div class="col-8">
+          <form class="my-3" @submit.prevent="onSubmit(text)">
+            <div class="my-3">
+              <label class="form-label">Enter some text, then click "Submit" to generate a completion.</label>
+              <textarea class="form-control" rows="10" placeholder="Say this is a test." v-model="text" />
+            </div>
+            <div class="my-3 alert alert-danger" v-if="completionsAlert">
+              {{ completionsAlert }}
+            </div>
+            <div class="my-3">
+              <button type="submit" class="btn btn-primary">Submit</button>
+            </div>
+          </form>
+        </div>
+        <div class="col-4">
+          <div class="m-3">
+            <label class="form-label" for="api-key-input">API key</label>
+            <div class="d-flex">
+              <input
+                type="text"
+                class="form-control flex-grow-1"
+                id="api-key-input"
+                v-model="apiKey"
+              />
+              <i
+                class="bi fs-4 ps-1"
+                :class="{
+                  'bi-check-lg': models,
+                  'text-success': models,
+                  'bi-x-lg': !models,
+                  'text-danger': !models,
+                }"
+              ></i>
+            </div>
+          </div>
+          <div class="m-3 alert alert-danger" v-if="modelsAlert">
+            {{ modelsAlert }}
+          </div>
+          <div class="m-3" v-if="models">
+            <label class="form-label" for="model-input">Model</label>
+            <select class="form-select" id="model-input" v-model="modelId">
+              <option v-for="model in models" :key="model.id">
+                {{ model.id }}
+              </option>
+            </select>
+          </div>
+          <div class="m-3">
+            <label class="form-label" for="stop-input">Stop sequence</label>
+            <input
+              type="text"
+              class="form-control"
+              id="stop-input"
+              v-model="stop"
+            />
+          </div>
+          <div class="m-3">
+            <label class="form-label" for="max-new-tokens-input"
+              >Max. new tokens</label
+            >
+            <input
+              type="text"
+              pattern="[1-9][0-9]*"
+              class="form-control"
+              id="max-new-tokens-input"
+              v-model.number="maxNewTokens"
+            />
+          </div>
+        </div>
+      </div>
+    </main>
+    <footer class="my-5">
+      <div class="row">
+        <div class="col-4">
+          <div class="card">
+            <div class="card-body">
+              <h6 class="card-title">Issues?</h6>
+              <p class="card-text">If something doesn't work, or if something could work better, please let us know!</p>
+              <a href="https://github.com/JHU-CLSP/openaisle/issues/new" class="card-link">Create issue on GitHub</a>
+            </div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="card">
+            <div class="card-body">
+              <h6 class="card-title">API Documentation</h6>
+              <p class="card-text">A subset of the OpenAI API is currently implemented on top of HuggingFace.</p>
+              <a href="https://app.swaggerhub.com/apis-docs/hltcoe/OpenAisle/0.0.1" class="card-link">Read API docs on SwaggerHub</a>
+            </div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="card">
+            <div class="card-body">
+              <h6 class="card-title">Source Code</h6>
+              <p class="card-text">Want to use or modify this code?</p>
+              <a href="https://github.com/JHU-CLSP/openaisle" class="card-link">Go to GitHub repository</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
+</template>
+
 <script>
-import PromptForm from './components/PromptForm.vue'
-import axios from 'axios'
+import axios from "axios";
+
+const BASE_64_REGEX = /^[A-Za-z0-9+/=]*$/;
 
 function formatAxiosError(e) {
   if (e.response) {
     if (e.response.status === 400) {
-      return 'Bad request.';
-    } if (e.response.status === 401) {
-      return 'Invalid authorization.';
+      return "Bad request.";
+    } else if (e.response.status === 401) {
+      return "Invalid authorization.";
     } else if (e.response.status === 403) {
-      return 'Authorization is not sufficient.';
-    } else {
+      return "Authorization is not sufficient.";
+    } else if (e.response.status > 0) {
       return `HTTP ${e.response.status}: ${e.response.data}`;
+    } else {
+      return `${e}`;
     }
   } else if (e.request) {
-    return 'Received no response from server.';
+    return "Received no response from server.";
   } else {
     return e.message;
   }
 }
 
 export default {
-  components: {
-    PromptForm,
-  },
   data() {
     return {
-      text: '',
+      apiKey: null,
+      modelId: null,
       models: null,
       modelsAlert: null,
+      stop: "Q:",
+      maxNewTokens: 20,
+      text: "",
+      completionsAlert: null,
     };
   },
+  computed: {
+    safeAPIKey() {
+      return this.apiKey && BASE_64_REGEX.test(this.apiKey) ? this.apiKey : "";
+    },
+    openAisleHeaders() {
+      return {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.safeAPIKey}`,
+      };
+    },
+  },
   methods: {
-    async onChange(text) {
+    async populateModels() {
+      const previousModelId = this.modelId;
+      this.models = null;
+      this.modelId = null;
+      this.models = await this.getModels();
+      if (this.models && this.models.length !== 0) {
+        if (this.models.find((m) => m.id === previousModelId)) {
+          this.modelId = previousModelId;
+        } else {
+          this.modelId = this.models[0].id;
+        }
+      }
+    },
+    async onSubmit(text) {
       this.text = text;
-      const completions = await postCompletions(text);
-      const generatedText = completions.choices[0].text;
-      if (generatedText !== null) {
-        this.text = generatedText;
+      const completions = await this.getCompletion(text);
+      if (completions !== null) {
+        const generatedText = completions.choices[0].text;
+        if (generatedText !== null) {
+          this.text = generatedText;
+        }
       }
     },
     async getModels() {
       this.modelsAlert = null;
       try {
-        const url = `http://${process.env.VUE_APP_OPENAISLE_HOST}:${process.env.VUE_APP_OPENAISLE_PORT}/v1/models`;
-        const response = await axios.get(
-          url,
-          { headers: { "Content-Type": "application/json" } }
-        );
-        return response.data;
+        const url = `http://${import.meta.env.VITE_OPENAISLE_HOST}:${
+          import.meta.env.VITE_OPENAISLE_PORT
+        }/v1/models`;
+        const response = await axios.get(url, {
+          headers: this.openAisleHeaders,
+        });
+        return response.data.data;
       } catch (e) {
         console.log(e);
         this.modelsAlert = formatAxiosError(e);
         return null;
       }
     },
-    async postCompletions(text) {
+    async getCompletion(text) {
       this.completionsAlert = null;
       try {
-        const url = `http://${process.env.VUE_APP_OPENAISLE_HOST}:${process.env.VUE_APP_OPENAISLE_PORT}/v1/completions`;
+        const url = `http://${import.meta.env.VITE_OPENAISLE_HOST}:${
+          import.meta.env.VITE_OPENAISLE_PORT
+        }/v1/completions`;
         const response = await axios.post(
           url,
-          { model: 'facebook/opt-125m', prompt: text },
-          { headers: { "Content-Type": "application/json" } }
+          { model: this.modelId, prompt: text, max_tokens: this.maxNewTokens, stop: this.stop },
+          { headers: this.openAisleHeaders }
         );
         return response.data;
       } catch (e) {
@@ -72,42 +222,31 @@ export default {
       }
     },
   },
-  mounted() {
-    (async () => (this.models = this.getModels()))();
+  watch: {
+    apiKey: {
+      handler(newValue) {
+        this.populateModels();
+      },
+      immediate: true,
+    },
+    text(newValue) {
+      this.myText = newValue;
+    },
   },
-}
+};
 </script>
-
-<template>
-  <div class="container">
-    <header>
-      <h1>
-        You did it! &#x1F495;
-      </h1>
-    </header>
-  
-    <main>
-      <div class="row">
-        <div class="col-8">
-          <PromptForm :text="text" @change="onChange" />
-        </div>
-        <div class="col-4">
-          <div class="alert alert-danger" v-if="completionsAlert">
-            {{ completionsAlert }}
-          </div>
-          <div v-else>
-            <ul>
-              <li v-for="model in models" :key="model.id">{{ model.id }}</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </main>
-  </div>
-</template>
 
 <style src="bootstrap/dist/css/bootstrap.min.css">
 </style>
 
 <style src="bootstrap-icons/font/bootstrap-icons.css">
+</style>
+
+<style src="github-fork-ribbon-css/gh-fork-ribbon.css">
+</style>
+
+<style scoped>
+.github-fork-ribbon:before {
+  background-color: #000;
+}
 </style>
