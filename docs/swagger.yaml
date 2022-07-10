@@ -6,9 +6,8 @@ info:
   title: OpenAisle
   contact:
     name: HLTCOE
-  license:
-    name: BSD 2-Clause License
-    url: https://spdx.org/licenses/BSD-2-Clause.html
+servers:
+  - url: http://18.190.158.220
 security:
   - basic: []
   - bearer: []
