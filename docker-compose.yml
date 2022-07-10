@@ -27,8 +27,8 @@ services:
       - --preload-model
       - facebook/opt-2.7b
     restart: unless-stopped
-    #deploy:
-    #  resources:
-    #    reservations:
-    #      devices:
-    #        - capabilities: [gpu]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
