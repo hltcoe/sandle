@@ -165,8 +165,13 @@ def create_app(preload_model: Optional[str]) -> Flask:
 
         prompt = request.json.get('prompt', DEFAULT_PROMPT)
 
-        _stop = request.json.get('stop', [])
-        stops = _stop if isinstance(_stop, list) else [_stop]
+        _stop = request.json.get('stop')
+        if isinstance(_stop, list):
+            stops = _stop
+        elif isinstance(_stop, str):
+            stops = [_stop]
+        else:
+            stops = []
 
         stream = request.json.get('stream', False)
 
