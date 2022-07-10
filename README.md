@@ -18,7 +18,7 @@ By default, the demo web interface and API endpoint will be bound to port 80 on 
 
 By default, the demo will generate a random API key every time it starts up.  This API key will
 be logged to the console.  You can also specify your own (base-64--encoded) API key by passing the
-`--auth-key` parameter to the `openai-adapter` service.
+`--auth-token` parameter to the `openai-adapter` service.
 
 ## Example API calls
 
