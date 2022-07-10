@@ -160,6 +160,8 @@ function formatAxiosError(e) {
       return "Invalid authorization.";
     } else if (e.response.status === 403) {
       return "Authorization is not sufficient.";
+    } else if (e.response.status === 504) {
+      return "Request timed out.";
     } else if (e.response.status > 0) {
       return `HTTP ${e.response.status}: ${e.response.data}`;
     } else {
