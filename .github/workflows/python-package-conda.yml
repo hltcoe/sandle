@@ -3,11 +3,8 @@ name: Python Package using Conda
 on: [push]
 
 jobs:
-  build-linux:
+  test-opt:
     runs-on: ubuntu-latest
-    strategy:
-      max-parallel: 5
-
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python 3.9
@@ -21,14 +18,34 @@ jobs:
     - name: Install dependencies
       run: |
         pip install -r opt/requirements.txt
-    - name: Lint with flake8
+    - name: Perform static analysis
       run: |
-        pip install flake8
-        flake8 opt
-    - name: Analyze with mypy
+        pip install flake8 mypy
+        cd opt && flake8 && mypy
+    #- name: Test with pytest
+    #  run: |
+    #    pip install pytest
+    #    pytest
+
+  test-openai-adapter:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v3
+      with:
+        python-version: 3.9
+    - name: Add conda to system path
       run: |
-        pip install mypy
-        mypy opt
+        # $CONDA is an environment variable pointing to the root of the miniconda directory
+        echo $CONDA/bin >> $GITHUB_PATH
+    - name: Install dependencies
+      run: |
+        pip install -r openai-adapter/requirements.txt
+    - name: Perform static analysis
+      run: |
+        pip install flake8 mypy
+        cd openai-adapter && flake8 && mypy
     #- name: Test with pytest
     #  run: |
     #    pip install pytest
