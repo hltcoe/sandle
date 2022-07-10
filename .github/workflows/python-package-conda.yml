@@ -18,9 +18,9 @@ jobs:
     - name: Install dependencies
       run: |
         pip install -r opt/requirements.txt
+        pip install -r opt/dev-requirements.txt
     - name: Perform static analysis
       run: |
-        pip install flake8 mypy
         cd opt && flake8 && mypy
     #- name: Test with pytest
     #  run: |
@@ -42,6 +42,7 @@ jobs:
     - name: Install dependencies
       run: |
         pip install -r openai-adapter/requirements.txt
+        pip install -r openai-adapter/dev-requirements.txt
     - name: Perform static analysis
       run: |
         pip install flake8 mypy
