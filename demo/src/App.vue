@@ -11,7 +11,7 @@
 
     <a
       class="github-fork-ribbon position-absolute position-top-0 position-end-0"
-      href="https://github.com/JHU-CLSP/openaisle"
+      href="https://github.com/hltcoe/openaisle"
       data-ribbon="Fork me on GitHub"
       title="Fork me on GitHub"
       >Fork me on GitHub</a
@@ -108,7 +108,7 @@
                 please let us know!
               </p>
               <a
-                href="https://github.com/JHU-CLSP/openaisle/issues/new"
+                href="https://github.com/hltcoe/openaisle/issues/new"
                 class="card-link"
                 >Create issue on GitHub</a
               >
@@ -136,7 +136,7 @@
             <div class="card-body">
               <h6 class="card-title">Source Code</h6>
               <p class="card-text">Want to use or modify this code?</p>
-              <a href="https://github.com/JHU-CLSP/openaisle" class="card-link"
+              <a href="https://github.com/hltcoe/openaisle" class="card-link"
                 >Go to GitHub repository</a
               >
             </div>
