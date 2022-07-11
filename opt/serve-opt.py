@@ -129,7 +129,7 @@ class LM:
                 truncated=truncated,
             )
         else:
-            raise Exception(f'Generated text "{output_text}" does begin with input text "{text}"')
+            raise Exception(f'Generated text "{output_text}" does not begin with input text "{text}"')
 
 
 def make_api_completion(response_id: str, created: int, model_id: str, completion: Completion) -> Dict[str, Any]:
