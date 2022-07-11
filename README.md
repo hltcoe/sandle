@@ -12,7 +12,8 @@ This repository includes:
 
 ### Demo
 
-A Docker Compose configuration is provided to run the demo.  Because Docker Compose looks in parent
+A Docker Compose configuration is provided to run the demo.  `npm` is used to set up the development
+environment for the web interface (which runs on the [Vue](https://vuejs.org) web framework) and build the interface for production.  Because Docker Compose looks in parent
 directories for the `docker-compose.yml` file, you can build the interface and run the demo in one
 line.  Change directories to the `demo` subdirectory and do:
 
