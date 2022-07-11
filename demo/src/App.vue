@@ -183,6 +183,7 @@
 </template>
 
 <script>
+import { nextTick } from "vue";
 import axios from "axios";
 import { SSE } from "sse.js";
 
@@ -314,7 +315,7 @@ A:`,
           this.completionSuffix;
         this.runningCompletions = false;
       }
-      this.$refs.textbox.scrollTop = this.$refs.textbox.scrollHeight;
+      nextTick(() => (this.$refs.textbox.scrollTop = this.$refs.textbox.scrollHeight));
     },
     handleCompletionsError(event) {
       console.log(event);
