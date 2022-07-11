@@ -20,7 +20,7 @@
     <main>
       <div class="row">
         <div class="col-8">
-          <form class="my-3" @submit.prevent="onSubmit(text)">
+          <form class="my-3" @submit.prevent="getCompletionsAndUpdateText">
             <div class="my-3">
               <label class="form-label"
                 >Enter some text, then click "Submit" to generate a
@@ -52,9 +52,7 @@
         </div>
         <div class="col-4">
           <div class="m-3">
-            <label class="form-label" for="api-key-input">
-              API key
-            </label>
+            <label class="form-label" for="api-key-input"> API key </label>
             <div class="d-flex">
               <input
                 type="text"
@@ -77,9 +75,7 @@
             {{ modelsAlert }}
           </div>
           <div class="m-3" v-if="models">
-            <label class="form-label" for="model-input">
-              Model
-            </label>
+            <label class="form-label" for="model-input"> Model </label>
             <select class="form-select" id="model-input" v-model="modelId">
               <option v-for="model in models" :key="model.id">
                 {{ model.id }}
@@ -87,9 +83,7 @@
             </select>
           </div>
           <div class="m-3">
-            <label class="form-label" for="stop-input">
-              Stop sequence
-            </label>
+            <label class="form-label" for="stop-input"> Stop sequence </label>
             <input
               type="text"
               class="form-control"
@@ -116,7 +110,10 @@
               id="strip-trailing-whitespace-input"
               v-model="stripTrailingWhitespace"
             />
-            <label class="form-check-label" for="strip-trailing-whitespace-input">
+            <label
+              class="form-check-label"
+              for="strip-trailing-whitespace-input"
+            >
               Strip trailing whitespace
             </label>
           </div>
@@ -160,9 +157,7 @@
                 A subset of the OpenAI API is currently implemented on top of
                 HuggingFace.
               </p>
-              <a
-                href="https://hltcoe.github.io/openaisle/"
-                class="card-link"
+              <a href="https://hltcoe.github.io/openaisle/" class="card-link"
                 >Read API docs</a
               >
             </div>
@@ -186,6 +181,7 @@
 
 <script>
 import axios from "axios";
+import { SSE } from "sse.js";
 
 const BASE_64_REGEX = /^[A-Za-z0-9+/=]*$/;
 
@@ -257,19 +253,6 @@ export default {
         this.modelId = previousModelId;
       }
     },
-    async onSubmit(text) {
-      this.text = text;
-      const completions = await this.getCompletion(text);
-      if (completions !== null) {
-        const generatedText = completions.choices[0].text;
-        if (generatedText !== null) {
-          this.text =
-            (this.stripTrailingWhitespace
-              ? generatedText.trimEnd()
-              : generatedText) + this.completionSuffix;
-        }
-      }
-    },
     async getModels() {
       this.modelsAlert = null;
       try {
@@ -286,28 +269,50 @@ export default {
         return null;
       }
     },
-    async getCompletion(text) {
+    handleCompletionsMessage(event) {
+      if (event.data !== "[DONE]") {
+        const completions = JSON.parse(event.data);
+        if (completions !== null) {
+          const generatedText = completions.choices[0].text;
+          if (generatedText !== null) {
+            this.text += generatedText;
+          }
+        }
+      } else {
+        this.text =
+          (this.stripTrailingWhitespace ? this.text.trimEnd() : this.text) +
+          this.completionSuffix;
+      }
+    },
+    handleCompletionsError(event) {
+      console.log(event);
+      this.completionsAlert = `${event.type}: ${event.detail}`;
+    },
+    async getCompletionsAndUpdateText() {
       this.completionsAlert = null;
       try {
         const url = `http://${import.meta.env.VITE_OPENAISLE_HOST}:${
           import.meta.env.VITE_OPENAISLE_PORT
         }/v1/completions`;
+        const payload = JSON.stringify({
+          model: this.modelId,
+          prompt: this.text,
+          max_tokens: this.maxNewTokens,
+          stop: this.stop ? this.stop : null,
+          stream: true,
+        });
         this.runningCompletions = true;
-        const response = await axios.post(
-          url,
-          {
-            model: this.modelId,
-            prompt: text,
-            max_tokens: this.maxNewTokens,
-            stop: this.stop ? this.stop : null,
-          },
-          { headers: this.openAisleHeaders }
-        );
-        return response.data;
+        const source = new SSE(url, {
+          payload: payload,
+          headers: this.openAisleHeaders,
+        });
+        source.addEventListener("message", this.handleCompletionsMessage);
+        source.addEventListener("error", this.handleCompletionsError);
+        source.addEventListener("abort", this.handleCompletionsError);
+        source.stream();
       } catch (e) {
         console.log(e);
-        this.completionsAlert = formatAxiosError(e);
-        return null;
+        this.completionsAlert = `${e}`;
       } finally {
         this.runningCompletions = false;
       }

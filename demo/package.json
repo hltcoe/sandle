@@ -13,6 +13,7 @@
     "bootstrap-icons": "^1.8.3",
     "github-fork-ribbon-css": "^0.2.3",
     "lodash": "^4.17.21",
+    "sse.js": "github:mpetazzoni/sse.js",
     "vue": "^3.2.37"
   },
   "devDependencies": {
