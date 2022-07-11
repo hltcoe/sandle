@@ -349,9 +349,6 @@ A:`,
       },
       immediate: true,
     },
-    text(newValue) {
-      this.myText = newValue;
-    },
   },
 };
 </script>
