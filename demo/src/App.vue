@@ -268,7 +268,7 @@ A:`,
       this.models = null;
       this.modelId = null;
       this.models = await this.getModels();
-      if (this.models && this.models.length !== 0) {
+      if (this.models && this.models.length > 0) {
         if (this.models.find((m) => m.id === previousModelId)) {
           this.modelId = previousModelId;
         } else {
