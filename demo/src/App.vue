@@ -309,10 +309,12 @@ A:`,
           this.completionSuffix;
       }
       this.$refs.textbox.scrollTop = this.$refs.textbox.scrollHeight;
+      this.runningCompletions = false;
     },
     handleCompletionsError(event) {
       console.log(event);
       this.completionsAlert = `${event.type}: ${event.detail}`;
+      this.runningCompletions = false;
     },
     async getCompletionsAndUpdateText() {
       this.completionsAlert = null;
@@ -339,7 +341,6 @@ A:`,
       } catch (e) {
         console.log(e);
         this.completionsAlert = `${e}`;
-      } finally {
         this.runningCompletions = false;
       }
     },
