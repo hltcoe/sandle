@@ -244,7 +244,7 @@ A:`,
       completionsAlert: null,
       runningCompletions: false,
       stripTrailingWhitespace: true,
-      completionSuffixJSONString: "\\n\\nQ: ",
+      completionSuffixJSONString: "\\n\\nQ:",
     };
   },
   computed: {
