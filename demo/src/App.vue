@@ -31,6 +31,7 @@
                 rows="10"
                 placeholder="Say this is a test."
                 v-model="text"
+                ref="textbox"
               />
             </div>
             <div class="my-3 alert alert-danger" v-if="completionsAlert">
@@ -307,6 +308,7 @@ A:`,
           (this.stripTrailingWhitespace ? this.text.trimEnd() : this.text) +
           this.completionSuffix;
       }
+      this.$refs.textbox.scrollTop = this.$refs.textbox.scrollHeight;
     },
     handleCompletionsError(event) {
       console.log(event);
