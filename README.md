@@ -58,7 +58,7 @@ curl "http://YOUR_OPENAISLE_SERVER/v1/completions" \
 }'
 ```
 
-Note that OpenAisle only supports http at this time.
+Note that OpenAisle only supports HTTP (not HTTPS) at this time.
 
 ### Documentation
 
