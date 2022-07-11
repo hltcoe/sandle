@@ -92,6 +92,7 @@ class LM:
                         token_batch_size: int = STREAM_TOKEN_BATCH_SIZE) -> Iterable[Completion]:
         (tokenizer, model) = self.get_tokenizer_and_model(model_id)
 
+        chunk_num = 0
         num_new_tokens = 0
         finish_reason = None
         while finish_reason is None:
@@ -109,9 +110,18 @@ class LM:
                         logging.warning('Generated more tokens than the max number specified')
                     finish_reason = FINISH_REASON_LENGTH
 
-            yield Completion(raw_completion.new_text, finish_reason)
+            # Check if a stop sequence spans the previous completion chunk and this one
+            # (if this isn't the first completion chunk)
+            (truncated_raw_completion_text, truncated) = truncate_at_stops(raw_completion.text, stop_strings)
+            if chunk_num > 0 and truncated:
+                yield Completion(
+                    raw_completion.text[-len(raw_completion.new_text):len(truncated_raw_completion_text)],
+                    FINISH_REASON_EOS)
+            else:
+                yield Completion(raw_completion.new_text, finish_reason)
 
             text = raw_completion.text
+            chunk_num += 1
 
     def _complete(self, text: str, tokenizer: AutoTokenizer, model: AutoModelForCausalLM,
                   stop_strings: List[str], max_new_tokens: int) -> RawCompletion:
