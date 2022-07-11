@@ -307,9 +307,9 @@ A:`,
         this.text =
           (this.stripTrailingWhitespace ? this.text.trimEnd() : this.text) +
           this.completionSuffix;
+        this.runningCompletions = false;
       }
       this.$refs.textbox.scrollTop = this.$refs.textbox.scrollHeight;
-      this.runningCompletions = false;
     },
     handleCompletionsError(event) {
       console.log(event);
