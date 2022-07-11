@@ -193,6 +193,7 @@ def create_app(preload_model: Optional[str]) -> Flask:
                     [END_OF_STREAM],
                 )),
                 mimetype='text/event-stream',
+                headers={'X-Accel-Buffering': 'no'},  # tell nginx not to buffer
             )
         else:
             completion = lm.complete(prompt, model_id, stops, max_new_tokens=max_tokens)

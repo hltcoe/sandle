@@ -130,10 +130,12 @@ def create_app(accepted_auth_token: str, backend_completions_url: str) -> Flask:
             )
         else:
             stream = request.json.get('stream', False)
-            with requests.post(backend_completions_url, json=request.json, stream=stream) as r:
-                return Response(r.iter_content(chunk_size=None),
-                                status=r.status_code,
-                                content_type=r.headers['content-type'])
+            r = requests.post(backend_completions_url, json=request.json, stream=stream)
+            headers = {}
+            for passthru_header in ('X-Accel-Buffering', 'Content-Type'):
+                if passthru_header in r.headers:
+                    headers[passthru_header] = r.headers[passthru_header]
+            return Response(r.iter_content(chunk_size=None), status=r.status_code, headers=headers)
 
     return app
 
