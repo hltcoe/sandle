@@ -5,8 +5,8 @@ Run a clone of OpenAI's API Service in your Local Environment ("OpenAISLE").
 
 This repository includes:
 
- * `opt`: a service that implements a subset of the OpenAI `/v1/completions` API (without authentication) using a single-threaded web server on top of OPT.  Alone, this service is suitable for a single user at a time.
- * `openai-adapter`: a service that implements a subset of the OpenAI `/v1/models`, `/v1/models/<model>`, and `/v1/completions` APIs (with authentication), implementing the latter by calling the `opt` service.  It uses a multi-threaded web server and is suitable for multiple users.
+ * `opt`: a service that implements a subset of [the OpenAI `/v1/completions` API](https://beta.openai.com/docs) (without authentication) using a single-threaded web server on top of OPT.  Alone, this service is suitable for a single user at a time.
+ * `openai-adapter`: a service that implements a subset of [the OpenAI `/v1/models`, `/v1/models/<model>`, and `/v1/completions` APIs](https://beta.openai.com/docs) (with authentication), implementing the latter by calling the `opt` service.  It uses a multi-threaded web server and is suitable for multiple users.
  * `demo`: a web interface for text completion that uses the API and Docker configuration for an [nginx](https://nginx.org) web server that serves the interface and acts as a reverse proxy in front of the API (the `openai-adapter` service).
  * a Docker Compose configuration file (`docker-compose.yml`) that facilitates running these services together and binds the address to the nginx web server to port 80 (by default) on the local machine.
 
