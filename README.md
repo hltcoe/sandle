@@ -33,19 +33,32 @@ key by passing the `--auth-token` argument on the command line.
 
 ### Example API calls
 
-The following command may be called against OpenAI's service or against a local OpenAisle service
-by setting `OPENAISLE_SERVER`, `OPENAISLE_API_KEY`, and `OPENAISLE_MODEL` appropriately.  To use
-OpenAI's service, set `OPENAISLE_SERVER` to `api.openai.com`.
+The following command may be called against OpenAI's service or against a local OpenAisle service.
+For example, on OpenAI:  
 
 ```bash
-curl "https://$OPENAISLE_SERVER/v1/completions" \
+curl "https://api.openai.com/v1/completions" \
   -H 'Content-Type: application/json' \
-  -H "Authorization: Bearer $OPENAISLE_API_KEY" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{
-  "model": "'"$OPENAISLE_MODEL"'",
+  "model": "text-davinci-002",
   "prompt": "Say this is a test"
 }'
 ```
+
+and on a local OpenAisle deployment:
+
+```bash
+curl "http://YOUR_OPENAISLE_SERVER/v1/completions" \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+  "model": "facebook/opt-2.7b",
+  "prompt": "Say this is a test"
+}'
+```
+
+Note that OpenAisle only supports http at this time.
 
 ### Documentation
 
