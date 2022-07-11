@@ -27,7 +27,7 @@ By default, the demo web interface and API endpoint will be bound to port 80 on 
 ## Authentication
 
 By default, the openai-adapter service will generate a random API key every time it starts up.
-This API key will be logged to the console.  You can also specify your own (base-64--encoded) API
+This API key will be logged to the console.  You can also specify your own (base-64–encoded) API
 key by passing the `--auth-token` argument on the command line.
 
 ## Usage
