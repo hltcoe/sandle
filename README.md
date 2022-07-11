@@ -12,7 +12,7 @@ This repository includes:
 
 ### Demo
 
-A Docker Compose configuration is provided to run the demo.  `npm` is used to set up the development
+A [Docker Compose](https://docs.docker.com/compose/) configuration is provided to run the demo.  `npm` is used to set up the development
 environment for the web interface (which runs on the [Vue](https://vuejs.org) web framework) and build the interface for production.  Because Docker Compose looks in parent
 directories for the `docker-compose.yml` file, you can build the interface and run the demo in one
 line.  Change directories to the `demo` subdirectory and do:
@@ -51,4 +51,4 @@ curl "https://$OPENAISLE_SERVER/v1/completions" \
 ### Documentation
 
 See our [API documentation](https://hltcoe.github.io/openaisle) for a description of the subset of the OpenAI API implemented by OpenAisle.
-This documentation is generated using the Swagger UI on our OpenAPI (not to be confused with OpenAI) definition file at `docs/swagger.yaml`.
+This documentation is generated using the Swagger UI on our API definition file at `docs/swagger.yaml`.
