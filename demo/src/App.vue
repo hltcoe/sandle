@@ -84,12 +84,14 @@
             </select>
           </div>
           <div class="m-3">
-            <label class="form-label" for="stop-input"> Stop sequence </label>
+            <label class="form-label" for="stop-json-input">
+              Stop sequence
+            </label>
             <input
               type="text"
               class="form-control"
-              id="stop-input"
-              v-model="stop"
+              id="stop-json-input"
+              v-model="stopJSONString"
             />
           </div>
           <div class="m-3">
@@ -215,7 +217,7 @@ export default {
       modelId: "facebook/opt-2.7b",
       models: null,
       modelsAlert: null,
-      stop: "Q:",
+      stopJSONString: "\\n",
       maxNewTokens: 20,
       text: `I am a highly intelligent question answering bot. If you ask me a question that is rooted in truth, I will give you the answer. If you ask me a question that is nonsense, trickery, or has no clear answer, I will respond with "Unknown".
 
@@ -260,6 +262,9 @@ A:`,
     },
     completionSuffix() {
       return JSON.parse('"' + this.completionSuffixJSONString + '"');
+    },
+    stop() {
+      return JSON.parse('"' + this.stopJSONString + '"');
     },
   },
   methods: {
