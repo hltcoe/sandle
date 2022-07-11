@@ -30,7 +30,9 @@ By default, the openai-adapter service will generate a random API key every time
 This API key will be logged to the console.  You can also specify your own (base-64--encoded) API
 key by passing the `--auth-token` argument on the command line.
 
-## Example API calls
+## Usage
+
+### Example API calls
 
 The following command may be called against OpenAI's service or against a local OpenAisle service
 by setting `OPENAISLE_SERVER`, `OPENAISLE_API_KEY`, and `OPENAISLE_MODEL` appropriately.  To use
@@ -45,3 +47,8 @@ curl "https://$OPENAISLE_SERVER/v1/completions" \
   "prompt": "Say this is a test"
 }'
 ```
+
+### Documentation
+
+See our [API documentation](https://hltcoe.github.io/openaisle) for a description of the subset of the OpenAI API implemented by OpenAisle.
+This documentation is generated using the Swagger UI on our OpenAPI (not to be confused with OpenAI) definition file at `docs/swagger.yaml`.
