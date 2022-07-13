@@ -7,6 +7,9 @@ info:
   contact:
     name: HLTCOE
 servers:
+  # Added by API Auto Mocking Plugin
+  - description: SwaggerHub API Auto Mocking
+    url: https://virtserver.swaggerhub.com/cmay14/OpenAisle/0.0.1
   - url: http://18.190.158.220
 security:
   - basic: []
@@ -70,6 +73,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Completion'
+            text/event-stream:
+              schema:
+                type: string
+                description: >-
+                  A stream of server-sent events representing chunks (subsegments) of the text completion.  Each event is a message with the `data` field populated.  Each chunk is encoded by a message whose `data` field value is a JSON-encoded Completion object.  In contrast to the non-streaming behavior, the `text` field of the `choices` list will contain a chunk of the newly generated text and will not contain the prompt.  The stream will end with a message with `data` field value of `[DONE]`.
+                example: |+
+                  data: {"id": "4f7e9dd3-c1b2-40bb-be72-24a5487c6beb", "object": "text_completion", "created": 1657745918, "model": "facebook/opt-2.7b", "choices": [{"text": " I have an egg", "index": 0, "logprobs": null, "finish_reason": null}], "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}}
+
+                  data: {"id": "4f7e9dd3-c1b2-40bb-be72-24a5487c6beb", "object": "text_completion", "created": 1657745918, "model": "facebook/opt-2.7b", "choices": [{"text": " that matches your TS", "index": 0, "logprobs": null, "finish_reason": null}], "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}}
+                  
+                  data: {"id": "4f7e9dd3-c1b2-40bb-be72-24a5487c6beb", "object": "text_completion", "created": 1657745918, "model": "facebook/opt-2.7b", "choices": [{"text": "V. Would you", "index": 0, "logprobs": null, "finish_reason": null}], "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}}
+                  
+                  data: {"id": "4f7e9dd3-c1b2-40bb-be72-24a5487c6beb", "object": "text_completion", "created": 1657745918, "model": "facebook/opt-2.7b", "choices": [{"text": " mind hatching it", "index": 0, "logprobs": null, "finish_reason": "length"}], "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}}
+                  
+                  data: [DONE]
+
         '400':
           description: Invalid request specification
         '401':
@@ -93,6 +112,8 @@ components:
           type: array
           items:
             type: string
+      example: >-
+        {"id":"facebook/opt-2.7b","object":"model","owned_by":"facebook","permission":[]}
     Prompt:
       type: object
       properties:
@@ -131,6 +152,8 @@ components:
           type: string
           nullable: true
           default: null
+      example: >-
+        {"model": "facebook/opt-2.7b", "prompt": "Hello, "}
     Completion:
       type: object
       properties:
@@ -185,6 +208,8 @@ components:
                     type: integer
                     format: int64
                     minimum: 0
+      example: >-
+        {"choices":[{"finish_reason":"length","index":0,"logprobs":null,"text":"Hello,  I have an egg that matches your TSV. Would you mind hatching it"}],"created":1657745801,"id":"a6ad78e8-dac1-419b-80ee-7e4411710a81","model":"facebook/opt-2.7b","object":"text_completion","usage":{"completion_tokens":0,"prompt_tokens":0,"total_tokens":0}}
   securitySchemes:
     basic:
       type: http
