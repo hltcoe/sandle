@@ -84,7 +84,7 @@ class LM:
 
         finish_reason = FINISH_REASON_EOS if raw_completion.truncated else FINISH_REASON_LENGTH
 
-        return Completion(raw_completion.text, finish_reason)
+        return Completion(raw_completion.new_text, finish_reason)
 
     def stream_complete(self, text: str, model_id: str,
                         stop_strings: List[str],
