@@ -11,7 +11,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from waitress import serve
 
 
-STREAM_TOKEN_BATCH_SIZE = 4
+STREAM_TOKEN_BATCH_SIZE = 1
 DEFAULT_MAX_TOKENS = 16
 EOS = '</s>'
 DEFAULT_PROMPT = EOS
