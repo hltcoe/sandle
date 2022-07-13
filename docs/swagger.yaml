@@ -50,7 +50,7 @@ paths:
             application/json:
               schema:
                 type: string
-                example: facebook/opt-1.3b
+                example: facebook%2Fopt-2.7b
       responses:
         '200':
           description: Successful operation
@@ -107,7 +107,7 @@ components:
       properties:
         id:
           type: string
-          example: facebook/opt-1.3b
+          example: facebook/opt-2.7b
         object:
           type: string
           enum:

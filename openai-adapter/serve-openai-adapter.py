@@ -103,7 +103,7 @@ def create_app(accepted_auth_token: str, backend_completions_url: str) -> Flask:
             'object': 'list'
         })
 
-    @app.route('/v1/model/<model>')
+    @app.route('/v1/models/<path:model>')
     @strip_www_authenticate_header
     @multi_auth.login_required
     def get_model(model):
