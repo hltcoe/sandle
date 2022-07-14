@@ -16,12 +16,11 @@ A web interface is provided to illustrate the API functionality and facilitate e
 
 <img width="888" alt="Screen Shot of demo web interface" src="https://user-images.githubusercontent.com/457238/178364339-6d62e7b7-9687-46ed-9312-9e5cb1446705.png">
 
-A [Docker Compose](https://docs.docker.com/compose/) configuration is provided to run the demo.  [npm](https://npmjs.com) is used to build the web interface, which runs on the [Vue](https://vuejs.org) web framework.  Because Docker Compose looks in parent
-directories for the `docker-compose.yml` file, you can build the interface and run the demo in one
-line.  Change directories to the `demo` subdirectory and do:
+A [Docker Compose](https://docs.docker.com/compose/) configuration is provided to run the demo.  [npm](https://npmjs.com) is used to build the web interface, which runs on the [Vue](https://vuejs.org) web framework.
+To build and run the demo using Docker Compose, do:
 
 ```bash
-npm install && npm run build && docker-compose up --build
+docker-compose up --build
 ```
 
 By default, the demo web interface and API endpoint will be bound to port 80 on the host.  Go to
