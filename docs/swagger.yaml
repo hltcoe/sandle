@@ -124,7 +124,7 @@ components:
     Prompt:
       type: object
       properties:
-        id:
+        model:
           description: ID of model to use
           type: string
         prompt:
