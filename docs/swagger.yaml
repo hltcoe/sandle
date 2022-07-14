@@ -137,6 +137,25 @@ components:
           type: integer
           minimum: 1
           default: 16
+        temperature:
+          description: >-
+            Sampling temperature.  Set to 1 to disable;
+            see https://huggingface.co/blog/how-to-generate#top-p-nucleus-sampling
+            for more information
+          type: number
+          minimum: 0
+          exclusiveMinimum: true
+          maximum: 1
+          default: 1
+        top_p:
+          description: >-
+            Nucleus sampling probability mass.  Set to 0 or 1 to disable;
+            see https://huggingface.co/blog/how-to-generate#top-p-nucleus-sampling
+            for more information
+          type: number
+          minimum: 0
+          maximum: 1
+          default: 1
         stream:
           description: >-
             Whether to stream completed text as it is
