@@ -79,7 +79,7 @@ class LM:
 
     def complete(self, text: str, model_id: str,
                  stop_strings: List[str],
-                 max_new_tokens: int = STREAM_TOKEN_BATCH_SIZE,
+                 max_new_tokens: int = DEFAULT_MAX_TOKENS,
                  top_p: float = DEFAULT_TOP_P,
                  temperature: float = DEFAULT_TEMPERATURE) -> Completion:
         (tokenizer, model) = self.get_tokenizer_and_model(model_id)
