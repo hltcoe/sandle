@@ -352,6 +352,7 @@ A:`,
       this.runningCompletions = false;
     },
     async getCompletionsAndUpdateText() {
+      if (!this.runningCompletions) {
       this.completionsAlert = null;
       try {
         const url = `http://${import.meta.env.VITE_OPENAISLE_HOST}:${
@@ -379,6 +380,7 @@ A:`,
         console.log(e);
         this.completionsAlert = `${e}`;
         this.runningCompletions = false;
+        }
       }
     },
   },
