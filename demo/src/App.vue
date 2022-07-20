@@ -99,11 +99,38 @@
               Max. new tokens
             </label>
             <input
-              type="text"
-              pattern="[1-9][0-9]*"
+              type="number"
               class="form-control"
               id="max-new-tokens-input"
               v-model.number="maxNewTokens"
+            />
+          </div>
+          <div class="m-3">
+            <label class="form-label" for="temperature-input">
+              Temperature <span class="text-muted mx-2">{{ temperature }} {{ temperature === 1 ? ' (disabled)' : '' }}</span>
+            </label>
+            <input
+              type="range"
+              class="form-range"
+              id="temperature-input"
+              min="0.01"
+              max="1"
+              step="0.01"
+              v-model.number="temperature"
+            />
+          </div>
+          <div class="m-3">
+            <label class="form-label" for="top-p-input">
+              Top-p <span class="text-muted mx-2">{{ topP }} {{ topP === 0 || topP === 1 ? ' (disabled)' : '' }}</span>
+            </label>
+            <input
+              type="range"
+              class="form-range"
+              id="top-p-input"
+              min="0"
+              max="1"
+              step="0.01"
+              v-model.number="topP"
             />
           </div>
           <div class="m-3">
@@ -220,6 +247,8 @@ export default {
       modelsAlert: null,
       stopJSONString: "\\n",
       maxNewTokens: 20,
+      temperature: 1,
+      topP: 1,
       text: `I am a highly intelligent question answering bot. If you ask me a question that is rooted in truth, I will give you the answer. If you ask me a question that is nonsense, trickery, or has no clear answer, I will respond with "Unknown".
 
 Q: What is human life expectancy in the United States?
@@ -332,6 +361,8 @@ A:`,
           model: this.modelId,
           prompt: this.text,
           max_tokens: this.maxNewTokens,
+          temperature: this.temperature,
+          top_p: this.topP,
           stop: this.stop ? this.stop : null,
           stream: true,
         });

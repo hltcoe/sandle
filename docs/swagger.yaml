@@ -124,7 +124,7 @@ components:
     Prompt:
       type: object
       properties:
-        id:
+        model:
           description: ID of model to use
           type: string
         prompt:
@@ -135,9 +135,27 @@ components:
         max_tokens:
           description: Maximum number of tokens to generate per completion
           type: integer
-          format: int64
           minimum: 1
           default: 16
+        temperature:
+          description: >-
+            Sampling temperature.  Set to 1 to disable;
+            see https://huggingface.co/blog/how-to-generate#top-p-nucleus-sampling
+            for more information
+          type: number
+          minimum: 0
+          exclusiveMinimum: true
+          maximum: 1
+          default: 1
+        top_p:
+          description: >-
+            Nucleus sampling probability mass.  Set to 0 or 1 to disable;
+            see https://huggingface.co/blog/how-to-generate#top-p-nucleus-sampling
+            for more information
+          type: number
+          minimum: 0
+          maximum: 1
+          default: 1
         stream:
           description: >-
             Whether to stream completed text as it is
@@ -174,7 +192,6 @@ components:
         created:
           description: Timestamp when text completion was created
           type: integer
-          format: int64
           minimum: 0
         model:
           description: Identifier of model used to generate completion
@@ -190,7 +207,6 @@ components:
                 type: string
               index:
                 type: integer
-                format: int64
                 minimum: 0
               logprobs:
                 type: object
@@ -205,15 +221,12 @@ components:
                 properties:
                   prompt_tokens:
                     type: integer
-                    format: int64
                     minimum: 0
                   completion_tokens:
                     type: integer
-                    format: int64
                     minimum: 0
                   total_tokens:
                     type: integer
-                    format: int64
                     minimum: 0
       example: >-
         {"choices":[{"finish_reason":"length","index":0,"logprobs":null,"text":"Hello,  I have an egg that matches your TSV. Would you mind hatching it"}],"created":1657745801,"id":"a6ad78e8-dac1-419b-80ee-7e4411710a81","model":"facebook/opt-2.7b","object":"text_completion","usage":{"completion_tokens":0,"prompt_tokens":0,"total_tokens":0}}

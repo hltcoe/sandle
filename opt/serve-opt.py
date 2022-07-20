@@ -13,6 +13,8 @@ from waitress import serve
 
 STREAM_TOKEN_BATCH_SIZE = 1
 DEFAULT_MAX_TOKENS = 16
+DEFAULT_TEMPERATURE = 1.
+DEFAULT_TOP_P = 1.
 EOS = '</s>'
 DEFAULT_PROMPT = EOS
 END_OF_STREAM = '[DONE]'
@@ -77,10 +79,14 @@ class LM:
 
     def complete(self, text: str, model_id: str,
                  stop_strings: List[str],
-                 max_new_tokens: int = STREAM_TOKEN_BATCH_SIZE) -> Completion:
+                 max_new_tokens: int = STREAM_TOKEN_BATCH_SIZE,
+                 top_p: float = DEFAULT_TOP_P,
+                 temperature: float = DEFAULT_TEMPERATURE) -> Completion:
         (tokenizer, model) = self.get_tokenizer_and_model(model_id)
 
-        raw_completion = self._complete(text, tokenizer, model, stop_strings, max_new_tokens)
+        raw_completion = self._complete(
+            text, tokenizer, model, stop_strings=stop_strings, max_new_tokens=max_new_tokens, top_p=top_p,
+            temperature=temperature)
 
         finish_reason = FINISH_REASON_EOS if raw_completion.truncated else FINISH_REASON_LENGTH
 
@@ -89,6 +95,8 @@ class LM:
     def stream_complete(self, text: str, model_id: str,
                         stop_strings: List[str],
                         max_new_tokens: int = DEFAULT_MAX_TOKENS,
+                        top_p: float = DEFAULT_TOP_P,
+                        temperature: float = DEFAULT_TEMPERATURE,
                         token_batch_size: int = STREAM_TOKEN_BATCH_SIZE) -> Iterable[Completion]:
         (tokenizer, model) = self.get_tokenizer_and_model(model_id)
 
@@ -97,8 +105,9 @@ class LM:
         finish_reason = None
         while finish_reason is None:
             raw_completion = self._complete(
-                text, tokenizer, model, stop_strings,
-                min(token_batch_size, max_new_tokens - num_new_tokens),
+                text, tokenizer, model, stop_strings=stop_strings,
+                max_new_tokens=min(token_batch_size, max_new_tokens - num_new_tokens),
+                top_p=top_p, temperature=temperature,
             )
 
             if raw_completion.truncated:
@@ -124,9 +133,11 @@ class LM:
             text = raw_completion.text
 
     def _complete(self, text: str, tokenizer: AutoTokenizer, model: AutoModelForCausalLM,
-                  stop_strings: List[str], max_new_tokens: int) -> RawCompletion:
+                  stop_strings: List[str], max_new_tokens: int, top_p: float, temperature: float) -> RawCompletion:
         input_token_ids = tokenizer(text, return_tensors='pt')['input_ids']
-        output_token_ids = model.generate(input_token_ids.to(self.device), max_new_tokens=max_new_tokens)
+        output_token_ids = model.generate(
+            input_token_ids.to(self.device), max_new_tokens=max_new_tokens, do_sample=True, top_p=top_p,
+            temperature=temperature)
         output_text = clean_output_text(tokenizer.decode(output_token_ids[0].tolist()))
         if output_text.startswith(text):
             new_text = output_text[len(text):]
@@ -185,6 +196,10 @@ def create_app(preload_model: Optional[str]) -> Flask:
 
         stream = request.json.get('stream', False)
 
+        temperature = float(request.json.get('temperature', DEFAULT_TEMPERATURE))
+
+        top_p = float(request.json.get('top_p', DEFAULT_TOP_P))
+
         user = request.json.get('user')
 
         completion_log_text = 'streaming completion' if stream else 'completion'
@@ -198,7 +213,8 @@ def create_app(preload_model: Optional[str]) -> Flask:
                 (f'data: {event_data}\n\n' for event_data in chain(
                     (
                         json.dumps(make_api_completion(response_id, created, model_id, completion))
-                        for completion in lm.stream_complete(prompt, model_id, stops, max_new_tokens=max_tokens)
+                        for completion in lm.stream_complete(
+                            prompt, model_id, stops, max_new_tokens=max_tokens, top_p=top_p, temperature=temperature)
                     ),
                     [END_OF_STREAM],
                 )),
@@ -206,7 +222,8 @@ def create_app(preload_model: Optional[str]) -> Flask:
                 headers={'X-Accel-Buffering': 'no'},  # tell nginx not to buffer
             )
         else:
-            completion = lm.complete(prompt, model_id, stops, max_new_tokens=max_tokens)
+            completion = lm.complete(
+                prompt, model_id, stops, max_new_tokens=max_tokens, top_p=top_p, temperature=temperature)
             return jsonify(make_api_completion(response_id, created, model_id, completion))
 
     return app
