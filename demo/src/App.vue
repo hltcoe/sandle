@@ -107,7 +107,11 @@
           </div>
           <div class="m-3">
             <label class="form-label" for="temperature-input">
-              Temperature <span class="text-muted mx-2">{{ temperature }} {{ temperature === 1 ? ' (disabled)' : '' }}</span>
+              Temperature
+              <span class="text-muted mx-2"
+                >{{ temperature }}
+                {{ temperature === 1 ? " (disabled)" : "" }}</span
+              >
             </label>
             <input
               type="range"
@@ -121,7 +125,11 @@
           </div>
           <div class="m-3">
             <label class="form-label" for="top-p-input">
-              Top-p <span class="text-muted mx-2">{{ topP }} {{ topP === 0 || topP === 1 ? ' (disabled)' : '' }}</span>
+              Top-p
+              <span class="text-muted mx-2"
+                >{{ topP }}
+                {{ topP === 0 || topP === 1 ? " (disabled)" : "" }}</span
+              >
             </label>
             <input
               type="range"
@@ -344,7 +352,9 @@ A:`,
           this.completionSuffix;
         this.runningCompletions = false;
       }
-      nextTick(() => (this.$refs.textbox.scrollTop = this.$refs.textbox.scrollHeight));
+      nextTick(
+        () => (this.$refs.textbox.scrollTop = this.$refs.textbox.scrollHeight)
+      );
     },
     handleCompletionsError(event) {
       console.log(event);
