@@ -28,10 +28,12 @@
               >
               <textarea
                 class="form-control"
+                :disabled="runningCompletions"
                 rows="10"
                 placeholder="Say this is a test."
                 v-model="text"
                 ref="textbox"
+                @keypress.ctrl.enter.prevent="getCompletionsAndUpdateText"
               />
             </div>
             <div class="my-3 alert alert-danger" v-if="completionsAlert">
@@ -48,6 +50,7 @@
               <button v-else type="submit" class="btn btn-primary disabled">
                 Working
               </button>
+              <p class="small text-muted">Ctrl + Enter</p>
             </div>
           </form>
         </div>
@@ -363,33 +366,33 @@ A:`,
     },
     async getCompletionsAndUpdateText() {
       if (!this.runningCompletions) {
-      this.completionsAlert = null;
-      try {
-        const url = `http://${import.meta.env.VITE_OPENAISLE_HOST}:${
-          import.meta.env.VITE_OPENAISLE_PORT
-        }/v1/completions`;
-        const payload = JSON.stringify({
-          model: this.modelId,
-          prompt: this.text,
-          max_tokens: this.maxNewTokens,
-          temperature: this.temperature,
-          top_p: this.topP,
-          stop: this.stop ? this.stop : null,
-          stream: true,
-        });
-        this.runningCompletions = true;
-        const source = new SSE(url, {
-          payload: payload,
-          headers: this.openAisleHeaders,
-        });
-        source.addEventListener("message", this.handleCompletionsMessage);
-        source.addEventListener("error", this.handleCompletionsError);
-        source.addEventListener("abort", this.handleCompletionsError);
-        source.stream();
-      } catch (e) {
-        console.log(e);
-        this.completionsAlert = `${e}`;
-        this.runningCompletions = false;
+        this.completionsAlert = null;
+        try {
+          const url = `http://${import.meta.env.VITE_OPENAISLE_HOST}:${
+            import.meta.env.VITE_OPENAISLE_PORT
+          }/v1/completions`;
+          const payload = JSON.stringify({
+            model: this.modelId,
+            prompt: this.text,
+            max_tokens: this.maxNewTokens,
+            temperature: this.temperature,
+            top_p: this.topP,
+            stop: this.stop ? this.stop : null,
+            stream: true,
+          });
+          this.runningCompletions = true;
+          const source = new SSE(url, {
+            payload: payload,
+            headers: this.openAisleHeaders,
+          });
+          source.addEventListener("message", this.handleCompletionsMessage);
+          source.addEventListener("error", this.handleCompletionsError);
+          source.addEventListener("abort", this.handleCompletionsError);
+          source.stream();
+        } catch (e) {
+          console.log(e);
+          this.completionsAlert = `${e}`;
+          this.runningCompletions = false;
         }
       }
     },
