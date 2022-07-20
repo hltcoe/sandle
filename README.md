@@ -79,7 +79,7 @@ curl "http://YOUR_OPENAISLE_SERVER/v1/completions" \
 
 Note that OpenAisle only supports HTTP (not HTTPS) at this time.
 
-### Documentation
+### API Documentation
 
 See our [API documentation](https://hltcoe.github.io/openaisle) for a description of the subset of the OpenAI API implemented by OpenAisle.
 This documentation is generated using the Swagger UI on our API definition file at `docs/swagger.yaml`.
