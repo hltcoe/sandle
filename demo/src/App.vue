@@ -39,18 +39,35 @@
             <div class="my-3 alert alert-danger" v-if="completionsAlert">
               {{ completionsAlert }}
             </div>
-            <div class="my-3">
-              <button
-                v-if="!runningCompletions"
-                type="submit"
-                class="btn btn-primary"
+            <div class="my-3 d-flex">
+              <div>
+                <button
+                  type="submit"
+                  class="btn btn-primary"
+                  :class="{ disabled: runningCompletions }"
+                >
+                  Submit
+                </button>
+                <p class="form-text">Ctrl + Enter</p>
+              </div>
+              <div class="ms-2">
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  :class="{ disabled: runningCompletions }"
+                  title="Resample previous completion"
+                  @click="redoPreviousCompletions"
+                >
+                  <i class="bi bi-arrow-clockwise text-bold"></i> Redo previous
+                </button>
+              </div>
+              <div
+                class="spinner-border ms-3"
+                role="status"
+                v-if="runningCompletions"
               >
-                Submit
-              </button>
-              <button v-else type="submit" class="btn btn-primary disabled">
-                Working
-              </button>
-              <p class="small text-muted">Ctrl + Enter</p>
+                <span class="visually-hidden">Loading...</span>
+              </div>
             </div>
           </form>
         </div>
@@ -287,6 +304,7 @@ Q: Where is the Valley of Kings?
 A:`,
       completionsAlert: null,
       runningCompletions: false,
+      previousCompletionsPrompt: null,
       stripTrailingWhitespace: true,
       completionSuffixJSONString: "\\n\\nQ:",
     };
@@ -364,9 +382,16 @@ A:`,
       this.completionsAlert = `${event.type}: ${event.detail}`;
       this.runningCompletions = false;
     },
+    async redoPreviousCompletions() {
+      if (this.previousCompletionsPrompt !== null) {
+        this.text = this.previousCompletionsPrompt;
+        await this.getCompletionsAndUpdateText();
+      }
+    },
     async getCompletionsAndUpdateText() {
       if (!this.runningCompletions) {
         this.completionsAlert = null;
+        this.previousCompletionsPrompt = this.text;
         try {
           const url = `http://${import.meta.env.VITE_OPENAISLE_HOST}:${
             import.meta.env.VITE_OPENAISLE_PORT
