@@ -214,7 +214,9 @@ def create_app(preload_model: Optional[str]) -> Flask:
                     (
                         json.dumps(make_api_completion(response_id, created, model_id, completion))
                         for completion in lm.stream_complete(
-                            prompt, model_id, stops, max_new_tokens=max_tokens, top_p=top_p, temperature=temperature)
+                            prompt, model_id, stops, max_new_tokens=max_tokens, top_p=top_p, temperature=temperature,
+                            token_batch_size=max_tokens,  # use maximal batch size b/c current batcher scales poorly
+                        )
                     ),
                     [END_OF_STREAM],
                 )),
