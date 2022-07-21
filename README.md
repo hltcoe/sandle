@@ -83,3 +83,13 @@ Note that OpenAisle only supports HTTP (not HTTPS) at this time.
 
 See our [API documentation](https://hltcoe.github.io/openaisle) for a description of the subset of the OpenAI API implemented by OpenAisle.
 This documentation is generated using the Swagger UI on our API definition file at `docs/swagger.yaml`.
+
+## Testing
+
+Example runtime test using the Apache Bench tool (installed by default on OS X):
+
+```
+ab -n 10 -c 1 -s 60 -p qa.txt -T application/json -A :YOUR_API_KEY -m POST http://YOUR_OPENAISLE_SERVER/v1/completions
+```
+
+where `qa.txt` is a text file in the current directory that contains the prompt JSON (for example, `{"model": "facebook/opt-2.7b", "prompt": "Say this is a test"}`).
