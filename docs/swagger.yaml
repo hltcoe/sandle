@@ -137,6 +137,11 @@ components:
           type: integer
           minimum: 1
           default: 16
+        greedy_decoding:
+          description: >-
+            Whether to use greedy decoding or sampling for generation
+          type: boolean
+          default: false
         temperature:
           description: >-
             Sampling temperature.  Set to 1 to disable;
