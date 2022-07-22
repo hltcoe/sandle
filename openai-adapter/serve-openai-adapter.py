@@ -23,6 +23,13 @@ MODELS = [
         'owned_by': 'facebook',
         'permission': [],
     } for size in ('125m', '350m', '1.3b', '2.7b', '6.7b', '13b', '30b', '66b')
+] + [
+    {
+        'id': f'bigscience/bloom{suffix}',
+        'object': 'model',
+        'owned_by': 'bigscience',
+        'permission': [],
+    } for suffix in ('-350m', '-760m', '-1b3', '-2b5', '-6b3', '')
 ]
 
 

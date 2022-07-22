@@ -15,8 +15,6 @@ services:
       - http://opt:8000/v1/completions
       - --port
       - '8000'
-      - --allow-model
-      - facebook/opt-66b
     depends_on:
       - opt
     restart: unless-stopped
@@ -26,8 +24,6 @@ services:
     command:
       - --port
       - '8000'
-      - --preload-model
-      - facebook/opt-66b
       - --num-gpus
       - '8'
       - --first-gpu-memory
