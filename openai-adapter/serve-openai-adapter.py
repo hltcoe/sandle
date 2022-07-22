@@ -18,18 +18,26 @@ END_OF_STREAM = '[DONE]'
 
 MODELS = [
     {
-        'id': f'facebook/opt-{size}',
+        'id': model_id,
         'object': 'model',
-        'owned_by': 'facebook',
+        'owned_by': '',
         'permission': [],
-    } for size in ('125m', '350m', '1.3b', '2.7b', '6.7b', '13b', '30b', '66b')
-] + [
-    {
-        'id': f'bigscience/bloom{suffix}',
-        'object': 'model',
-        'owned_by': 'bigscience',
-        'permission': [],
-    } for suffix in ('-350m', '-760m', '-1b3', '-2b5', '-6b3', '')
+    } for model_id in (
+        'facebook/opt-125m',
+        'facebook/opt-350m',
+        'facebook/opt-1.3b',
+        'facebook/opt-2.7b',
+        'facebook/opt-6.7b',
+        'facebook/opt-13b',
+        'facebook/opt-30b',
+        'facebook/opt-66b',
+        'bigscience/bloom-350m',
+        'bigscience/bloom-760m',
+        'bigscience/bloom-1b3',
+        'bigscience/bloom-2b5',
+        'bigscience/bloom-6b3',
+        'bigscience/bloom',
+    )
 ]
 
 
