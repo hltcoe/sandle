@@ -54,7 +54,7 @@
                 <button
                   type="button"
                   class="btn btn-secondary"
-                  :class="{ disabled: runningCompletions }"
+                  :class="{ disabled: runningCompletions || useGreedyDecoding }"
                   title="Resample previous completion"
                   @click="redoPreviousCompletions"
                 >
@@ -126,6 +126,20 @@
             />
           </div>
           <div class="m-3">
+            <input
+              type="checkbox"
+              class="form-check-input me-1"
+              id="use-greedy-decoding-input"
+              v-model="useGreedyDecoding"
+            />
+            <label
+              class="form-check-label"
+              for="use-greedy-decoding-input"
+            >
+              Use greedy decoding
+            </label>
+          </div>
+          <div class="m-3">
             <label class="form-label" for="temperature-input">
               Temperature
               <span class="text-muted mx-2"
@@ -140,6 +154,7 @@
               min="0.01"
               max="1"
               step="0.01"
+              :disabled="useGreedyDecoding"
               v-model.number="temperature"
             />
           </div>
@@ -158,6 +173,7 @@
               min="0"
               max="1"
               step="0.01"
+              :disabled="useGreedyDecoding"
               v-model.number="topP"
             />
           </div>
@@ -306,6 +322,7 @@ A:`,
       runningCompletions: false,
       previousCompletionsPrompt: null,
       stripTrailingWhitespace: true,
+      useGreedyDecoding: false,
       completionSuffixJSONString: "\\n\\nQ:",
     };
   },
@@ -399,6 +416,7 @@ A:`,
           const payload = JSON.stringify({
             model: this.modelId,
             prompt: this.text,
+            greedy_decoding: this.useGreedyDecoding,
             max_tokens: this.maxNewTokens,
             temperature: this.temperature,
             top_p: this.topP,

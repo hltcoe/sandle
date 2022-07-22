@@ -107,13 +107,14 @@ class LM:
     def complete(self, text: str, model_id: str,
                  stop_strings: List[str],
                  max_new_tokens: int = DEFAULT_MAX_TOKENS,
+                 do_sample: bool = True,
                  top_p: float = DEFAULT_TOP_P,
                  temperature: float = DEFAULT_TEMPERATURE) -> Completion:
         (tokenizer, model) = self.get_tokenizer_and_model(model_id)
 
         raw_completion = self._complete(
-            text, tokenizer, model, stop_strings=stop_strings, max_new_tokens=max_new_tokens, top_p=top_p,
-            temperature=temperature)
+            text, tokenizer, model, stop_strings=stop_strings, max_new_tokens=max_new_tokens,
+            do_sample=do_sample, top_p=top_p, temperature=temperature)
 
         finish_reason = FINISH_REASON_EOS if raw_completion.truncated else FINISH_REASON_LENGTH
 
@@ -122,6 +123,7 @@ class LM:
     def stream_complete(self, text: str, model_id: str,
                         stop_strings: List[str],
                         max_new_tokens: int = DEFAULT_MAX_TOKENS,
+                        do_sample: bool = True,
                         top_p: float = DEFAULT_TOP_P,
                         temperature: float = DEFAULT_TEMPERATURE,
                         token_batch_size: int = STREAM_TOKEN_BATCH_SIZE) -> Iterable[Completion]:
@@ -134,7 +136,7 @@ class LM:
             raw_completion = self._complete(
                 text, tokenizer, model, stop_strings=stop_strings,
                 max_new_tokens=min(token_batch_size, max_new_tokens - num_new_tokens),
-                top_p=top_p, temperature=temperature,
+                do_sample=do_sample, top_p=top_p, temperature=temperature,
             )
 
             if raw_completion.truncated:
@@ -160,10 +162,11 @@ class LM:
             text = raw_completion.text
 
     def _complete(self, text: str, tokenizer: AutoTokenizer, model: AutoModelForCausalLM,
-                  stop_strings: List[str], max_new_tokens: int, top_p: float, temperature: float) -> RawCompletion:
+                  stop_strings: List[str], max_new_tokens: int,
+                  do_sample: bool, top_p: float, temperature: float) -> RawCompletion:
         input_token_ids = tokenizer(text, return_tensors='pt')['input_ids']
         output_token_ids = model.generate(
-            input_token_ids.to(self.main_device), max_new_tokens=max_new_tokens, do_sample=True, top_p=top_p,
+            input_token_ids.to(self.main_device), max_new_tokens=max_new_tokens, do_sample=do_sample, top_p=top_p,
             temperature=temperature)
         output_text = clean_output_text(tokenizer.decode(output_token_ids[0].tolist()))
         if output_text.startswith(text):
@@ -223,6 +226,8 @@ def create_app(max_memory: Optional[MaxMemoryDict] = None,
 
         stream = request.json.get('stream', False)
 
+        greedy_decoding = request.json.get('greedy_decoding', False)
+
         temperature = float(request.json.get('temperature', DEFAULT_TEMPERATURE))
 
         top_p = float(request.json.get('top_p', DEFAULT_TOP_P))
@@ -241,7 +246,8 @@ def create_app(max_memory: Optional[MaxMemoryDict] = None,
                     (
                         json.dumps(make_api_completion(response_id, created, model_id, completion))
                         for completion in lm.stream_complete(
-                            prompt, model_id, stops, max_new_tokens=max_tokens, top_p=top_p, temperature=temperature,
+                            prompt, model_id, stops, max_new_tokens=max_tokens,
+                            do_sample=not greedy_decoding, top_p=top_p, temperature=temperature,
                             token_batch_size=max_tokens,  # use maximal batch size b/c current batcher scales poorly
                         )
                     ),
@@ -252,7 +258,8 @@ def create_app(max_memory: Optional[MaxMemoryDict] = None,
             )
         else:
             completion = lm.complete(
-                prompt, model_id, stops, max_new_tokens=max_tokens, top_p=top_p, temperature=temperature)
+                prompt, model_id, stops, max_new_tokens=max_tokens,
+                do_sample=not greedy_decoding, top_p=top_p, temperature=temperature)
             return jsonify(make_api_completion(response_id, created, model_id, completion))
 
     return app
