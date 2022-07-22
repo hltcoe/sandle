@@ -22,7 +22,7 @@ MODELS = [
         'object': 'model',
         'owned_by': 'facebook',
         'permission': [],
-    } for size in ('125m', '350m', '1.3b', '2.7b')
+    } for size in ('125m', '350m', '1.3b', '2.7b', '6.7b', '13b', '30b', '66b')
 ]
 
 
@@ -152,12 +152,14 @@ def main():
                         help='Hostname or IP to serve on')
     parser.add_argument('-p', '--port', type=int, default=8000,
                         help='Port to serve on')
-    parser.add_argument('--auth-token',
+    parser.add_argument('-t', '--auth-token',
                         help='Base-64--encoded authorization token (API key) to accept; '
                              'if not specified, one will be generated on startup.')
-    parser.add_argument('--single-model',
+    parser.add_argument('-m', '--allow-model', action='append', metavar='model',
                         choices=tuple(m['id'] for m in MODELS),
-                        help='Allow only the specified model to be used.')
+                        help='Allow only the specified model(s) to be used. '
+                             'Can be provided multiple times to allow multiple models. '
+                             'By default, all supported models are allowed.')
     parser.add_argument('-l', '--log-level',
                         choices=('CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'), default='INFO',
                         help='Logging verbosity level threshold (to stderr)')
@@ -173,9 +175,11 @@ def main():
         auth_token = generate_auth_token()
         logging.info(f'Generated authorization token (API key): {auth_token}')
 
-    if args.single_model is not None:
-        logging.info(f'Allowing only one model to be used: {args.single_model}')
-        models_to_remove = [m for m in MODELS if m['id'] != args.single_model]
+    if args.allow_model:
+        allowed_models_set = set(args.allow_model)
+
+        logging.info(f'Allowing only the specified model(s) to be used: {allowed_models_set}')
+        models_to_remove = [m for m in MODELS if m['id'] not in allowed_models_set]
         for model_to_remove in models_to_remove:
             MODELS.remove(model_to_remove)
 

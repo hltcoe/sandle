@@ -15,8 +15,8 @@ services:
       - http://opt:8000/v1/completions
       - --port
       - '8000'
-      - --single-model
-      - facebook/opt-2.7b
+      - --allow-model
+      - facebook/opt-66b
     depends_on:
       - opt
     restart: unless-stopped
@@ -27,10 +27,22 @@ services:
       - --port
       - '8000'
       - --preload-model
-      - facebook/opt-2.7b
+      - facebook/opt-66b
+      - --num-gpus
+      - '8'
+      - --first-gpu-memory
+      - '12GB'
+      - --successive-gpu-memory
+      - '24GB'
     restart: unless-stopped
     deploy:
       resources:
         reservations:
           devices:
             - capabilities: [gpu]
+
+    volumes:
+      - huggingface-models:/root/.cache/huggingface
+
+volumes:
+  huggingface-models:

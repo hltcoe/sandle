@@ -26,6 +26,31 @@ docker-compose up --build
 By default, the demo web interface and API endpoint will be bound to port 80 on the host.  Go to
 `http://localhost` in your browser to use the web interface.
 
+#### BRTX
+
+The docker compose version installed on BRTX is outdated and does not
+work with our docker compose configuration file.  To use docker compose
+on BRTX, [install a new, standalone version of docker
+compose](https://docs.docker.com/compose/install/compose-plugin/#install-the-plugin-manually)
+to your home directory and run that version instead of the
+system-installed version.
+
+#### K80
+
+The Nvidia Tesla K80 is no longer actively supported by Nvidia and
+[newer versions of the `nvidia/cuda` Docker base image are configured
+not to run on K80 cuda drivers](https://gitlab.com/nvidia/container-images/cuda/-/issues/165#note_1005164251).  To work around this, modify the docker
+compose configuration to add the desired cuda driver version to the
+`NVIDIA_REQUIRE_CUDA` environment variable in the `opt` service.  For
+example:
+
+```yaml
+services:
+  opt:
+    environment:
+      - 'NVIDIA_REQUIRE_CUDA=cuda>=11.0 brand=tesla,driver>=418,driver<419 brand=tesla,driver>=440,driver<441 driver>=450'
+```
+
 ### Serving the API for a single user without Docker
 
 If you only need the API for a single user, it is easy to run the `opt` service by itself, outside of Docker.  Ensure the cuda toolkit and pytorch are installed, then install the Python requirements specified in `opt/requirements.txt`, and run (for example)

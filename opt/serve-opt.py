@@ -1,8 +1,9 @@
 import json
 import logging
+import os
 from itertools import chain
 from time import time
-from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple
+from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
 from uuid import uuid4
 
 import torch
@@ -20,6 +21,9 @@ DEFAULT_PROMPT = EOS
 END_OF_STREAM = '[DONE]'
 FINISH_REASON_EOS = 'stop'
 FINISH_REASON_LENGTH = 'length'
+
+
+MaxMemoryDict = Dict[Union[int, str], Union[int, str]]
 
 
 class Completion(NamedTuple):
@@ -58,22 +62,45 @@ def truncate_at_stops(text: str, stop_strings: List[str]) -> Tuple[str, bool]:
 
 
 class LM:
+    max_memory: Optional[MaxMemoryDict]
+    offload_dir: Optional[str]
     models: Dict[str, Tuple[AutoTokenizer, AutoModelForCausalLM]]
-    device: str
+    main_device: str
 
-    def __init__(self, preload_model: Optional[str] = None):
+    def __init__(self,
+                 max_memory: Optional[MaxMemoryDict] = None,
+                 offload_dir: Optional[str] = None,
+                 preload_model: Optional[str] = None):
+        self.max_memory = max_memory
+        self.offload_dir = offload_dir
         self.models = {}
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.main_device = 'cuda' if torch.cuda.is_available() else 'cpu'
         if preload_model is not None:
             self.get_tokenizer_and_model(preload_model)
 
     def get_tokenizer_and_model(self, model_id: str) -> Tuple[AutoTokenizer, AutoModelForCausalLM]:
         if model_id not in self.models:
             logging.info(f'Loading model: {model_id}')
-            tokenizer = AutoTokenizer.from_pretrained(model_id)
-            model = AutoModelForCausalLM.from_pretrained(model_id)
+            tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=False)
+            if self.offload_dir is not None:
+                offload_state_dict = True
+                if not os.path.isdir(self.offload_dir):
+                    logging.info(f'offload dir {self.offload_dir} does not exist; creating')
+                    try:
+                        os.makedirs(self.offload_dir)
+                    except Exception as ex:
+                        logging.warning(f'Could not create offload dir {self.offload_dir}', exc_info=ex)
+            else:
+                offload_state_dict = False
+            model = AutoModelForCausalLM.from_pretrained(
+                model_id,
+                device_map='auto',
+                max_memory=self.max_memory,
+                torch_dtype=torch.float16,
+                offload_folder=self.offload_dir,
+                offload_state_dict=offload_state_dict,
+            )
             model.eval()
-            model.to(self.device)
             self.models[model_id] = (tokenizer, model)
         return self.models[model_id]
 
@@ -136,7 +163,7 @@ class LM:
                   stop_strings: List[str], max_new_tokens: int, top_p: float, temperature: float) -> RawCompletion:
         input_token_ids = tokenizer(text, return_tensors='pt')['input_ids']
         output_token_ids = model.generate(
-            input_token_ids.to(self.device), max_new_tokens=max_new_tokens, do_sample=True, top_p=top_p,
+            input_token_ids.to(self.main_device), max_new_tokens=max_new_tokens, do_sample=True, top_p=top_p,
             temperature=temperature)
         output_text = clean_output_text(tokenizer.decode(output_token_ids[0].tolist()))
         if output_text.startswith(text):
@@ -171,11 +198,11 @@ def make_api_completion(response_id: str, created: int, model_id: str, completio
     }
 
 
-def create_app(preload_model: Optional[str]) -> Flask:
-    logging.info('Loading model')
-    lm = LM(preload_model)
+def create_app(max_memory: Optional[MaxMemoryDict] = None,
+               offload_dir: Optional[str] = None,
+               preload_model: Optional[str] = None) -> Flask:
+    lm = LM(max_memory, offload_dir, preload_model)
 
-    logging.info('Creating app')
     app = Flask(__name__)
 
     @app.route('/v1/completions', methods=['POST'])
@@ -241,8 +268,17 @@ def main():
                         help='Hostname or IP to serve on')
     parser.add_argument('-p', '--port', type=int, default=8000,
                         help='Port to serve on')
-    parser.add_argument('--preload-model',
-                        help='Repository of model to preload (example: facebook/opt-2.7b)')
+    parser.add_argument('-n', '--num-gpus', type=int, default=1,
+                        help='Number of GPUs to use')
+    parser.add_argument('-f', '--first-gpu-memory', default='12GB',
+                        help='Max memory to use for the model on the first GPU, where the '
+                             'inputs will be stored')
+    parser.add_argument('-g', '--successive-gpu-memory', default='24GB',
+                        help='Max memory to use for the model on each successive GPU')
+    parser.add_argument('-d', '--offload-dir',
+                        help='Directory where model will be offloaded if available memory is exceeded')
+    parser.add_argument('-m', '--preload-model',
+                        help='Huggingface repository of model to preload (example: facebook/opt-2.7b)')
     parser.add_argument('-l', '--log-level',
                         choices=('CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'), default='INFO',
                         help='Logging verbosity level threshold (to stderr)')
@@ -251,7 +287,21 @@ def main():
     logging.basicConfig(format='[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s',
                         level=args.log_level)
 
-    app = create_app(args.preload_model)
+    if args.num_gpus == 1:
+        logging.info(f'Using {args.num_gpus} GPU with up to {args.first_gpu_memory} model memory')
+    else:
+        logging.info(
+            f'Using {args.num_gpus} GPUs '
+            f'with up to {args.first_gpu_memory} model memory on the first GPU '
+            f'and up to {args.successive_gpu_memory} model memory on each successive GPU'
+        )
+    max_memory = dict(
+        (i, args.first_gpu_memory if i == 0 else args.successive_gpu_memory)
+        for i in range(args.num_gpus)
+    )
+
+    app = create_app(max_memory, args.offload_dir, args.preload_model)
+
     serve(app, host=args.host, port=args.port, threads=1)
 
 
