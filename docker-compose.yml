@@ -15,8 +15,6 @@ services:
       - http://opt:8000/v1/completions
       - --port
       - '8000'
-      - --auth-token
-      - CseOZCuYUr4RcqDoikW7lQ==
     depends_on:
       - opt
     restart: unless-stopped
