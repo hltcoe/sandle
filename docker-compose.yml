@@ -17,6 +17,8 @@ services:
       - '8000'
     depends_on:
       - opt
+    environment:
+      - OPENAISLE_AUTH_TOKEN
     restart: unless-stopped
 
   opt:
@@ -36,7 +38,6 @@ services:
         reservations:
           devices:
             - capabilities: [gpu]
-
     volumes:
       - huggingface-models:/root/.cache/huggingface
 

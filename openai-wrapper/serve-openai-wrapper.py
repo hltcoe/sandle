@@ -1,4 +1,5 @@
 import logging
+import os
 import secrets
 from base64 import b64encode
 from functools import wraps
@@ -185,7 +186,10 @@ def main():
 
     if args.auth_token is not None:
         auth_token = args.auth_token
-        logging.info(f'Authorization token (API key): {auth_token}')
+        logging.info('Authorization token (API key) read from command-line argument')
+    elif os.environ.get('OPENAISLE_AUTH_TOKEN'):
+        auth_token = os.environ['OPENAISLE_AUTH_TOKEN']
+        logging.info('Authorization token (API key) read from environment variable')
     else:
         auth_token = generate_auth_token()
         logging.info(f'Generated authorization token (API key): {auth_token}')
