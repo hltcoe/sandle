@@ -6,11 +6,11 @@ services:
     ports:
       - "${OPENAISLE_DEMO_PORT:-80}:80"
     depends_on:
-      - openai-adapter
+      - openai-wrapper
     restart: unless-stopped
 
-  openai-adapter:
-    build: openai-adapter
+  openai-wrapper:
+    build: openai-wrapper
     command:
       - http://opt:8000/v1/completions
       - --port

@@ -21,10 +21,10 @@ RUN pip install -r requirements.txt
 
 # 4. Add application code
 
-COPY serve-openai-adapter.py /opt/openaisle/
+COPY serve-openai-wrapper.py /opt/openaisle/
 
 
 # 5. Perform remaining configuration
 
 EXPOSE 8000
-ENTRYPOINT ["python", "serve-openai-adapter.py"]
+ENTRYPOINT ["python", "serve-openai-wrapper.py"]

@@ -6,8 +6,8 @@ Run a clone of OpenAI's API Service in your Local Environment ("OpenAISLE").
 This repository provides the following Docker services:
 
  * `opt`: a service that implements a subset of [the OpenAI `/v1/completions` API](https://beta.openai.com/docs) (without authentication) using a single-threaded web server on top of OPT.  Alone, this service is suitable for [a single user at a time](#serving-the-api-for-a-single-user-without-docker).
- * `openai-adapter`: a service that implements a subset of [the OpenAI `/v1/models`, `/v1/models/<model>`, and `/v1/completions` APIs](https://beta.openai.com/docs) (with authentication), implementing the latter by calling the `opt` service.  It uses a multi-threaded web server and is suitable for multiple users.
- * `demo`: an [nginx](https://nginx.org) web server that acts as a reverse proxy in front of the API (the `openai-adapter` service) and serves a web interface for text completion using the proxied API.
+ * `openai-wrapper`: a service that implements a subset of [the OpenAI `/v1/models`, `/v1/models/<model>`, and `/v1/completions` APIs](https://beta.openai.com/docs) (with authentication), implementing the latter by calling the `opt` service.  It uses a multi-threaded web server and is suitable for multiple users.
+ * `demo`: an [nginx](https://nginx.org) web server that acts as a reverse proxy in front of the API (the `openai-wrapper` service) and serves a web interface for text completion using the proxied API.
 
 These services can be run together on your local machine using [Docker Compose](https://docs.docker.com/compose/).  The Docker Compose configuration file (`docker-compose.yml`) specifies how they are invoked.
 
@@ -69,7 +69,7 @@ docker build -t $USER/opt opt && docker run -it -p 12349:8000 $USER/opt --port 8
 
 ### Authentication
 
-By default, the openai-adapter service will generate a random API key every time it starts up.
+By default, the openai-wrapper service will generate a random API key every time it starts up.
 This API key will be logged to the console.  You can also specify your own (base-64–encoded) API
 key by passing the `--auth-token` argument on the command line.
 

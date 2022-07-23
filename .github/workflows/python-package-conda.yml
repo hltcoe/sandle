@@ -27,7 +27,7 @@ jobs:
     #    pip install pytest
     #    pytest
 
-  test-openai-adapter:
+  test-openai-wrapper:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -41,12 +41,12 @@ jobs:
         echo $CONDA/bin >> $GITHUB_PATH
     - name: Install dependencies
       run: |
-        pip install -r openai-adapter/requirements.txt
-        pip install -r openai-adapter/dev-requirements.txt
+        pip install -r openai-wrapper/requirements.txt
+        pip install -r openai-wrapper/dev-requirements.txt
     - name: Perform static analysis
       run: |
         pip install flake8 mypy
-        cd openai-adapter && flake8 && mypy
+        cd openai-wrapper && flake8 && mypy
     #- name: Test with pytest
     #  run: |
     #    pip install pytest
