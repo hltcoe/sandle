@@ -10,7 +10,6 @@ servers:
   # Added by API Auto Mocking Plugin
   - description: SwaggerHub API Auto Mocking
     url: https://virtserver.swaggerhub.com/cmay14/OpenAisle/0.0.1
-  - url: http://18.190.158.220
 security:
   - basic: []
   - bearer: []
