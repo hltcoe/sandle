@@ -109,7 +109,49 @@ Note that OpenAisle only supports HTTP (not HTTPS) at this time.
 See our [API documentation](https://hltcoe.github.io/openaisle) for a description of the subset of the OpenAI API implemented by OpenAisle.
 This documentation is generated using the Swagger UI on our API definition file at `docs/swagger.yaml`.
 
+## Development
+
+To set up a development environment for the demo web interface, install a recent version of `npm`, go to the `demo` subdirectory, and do:
+
+```
+npm install
+```
+
+Then configure your development app by copying `.env.development` to `.env.development.local` and changing the values set in the file accordingly.  In particular, make sure you set `VUE_OPENAISLE_HOST` and `VUE_OPENAISLE_PORT` to the host and port of the API implementation you are using for development.  The demo service acts as a simple reverse proxy for the API implementation provided by the openai-wrapper service, so if you wish to run an API implementation yourself, you can run `docker-compose up` as usual, then use `localhost` and the demo service port bound to your host machine (by default, port 80) as your host and address.
+
+Once you've done that, you can start a development web server with:
+
+```
+npm run dev
+```
+
+Note that in the case you used `docker-compose up` to provide an API implementation, you will now have two versions of the demo interface running: one on port 80 (by default), running from the demo service container, and one on port 3000 (by default), running via `npm` directly on your host machine.
+
+### Stubbing out the backend
+
+If you cannot or do not wish to run a full language model backend during testing and development, you may use the stub backend instead.  This backend provides a type-compliant implementation of the `/v1/completions` API that returns a fixed completion of `" world!"`, as if responding to the prompt `"Hello,"`.  Cute, right?
+
+Using this backend requires a small amount of additional setup.  First, start the development server as usual:
+
+```
+npm run dev
+```
+
+Then, instead of running `docker-compose up`, launch the `openai-wrapper` service standalone (binding to whichever port the frontend is configured to connect to, here 54355, on your local machine):
+
+```
+docker-compose build openai-wrapper && docker-compose run --rm -p 54355:8000 --no-deps openai-wrapper
+```
+
+Finally, do the following to build and run the stub backend on the default network created by Docker Compose:
+
+```
+docker run --network openaisle_default --name opt --rm `docker build -q backend-stub`
+```
+
 ## Testing
+
+### Benchmarking
 
 Example runtime test using the Apache Bench tool (installed by default on OS X):
 
