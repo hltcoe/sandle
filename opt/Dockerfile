@@ -1,6 +1,3 @@
-# This Dockerfile specifies a Docker build for running test_run.py on
-# the current better-dry-run server, which has a single K80
-
 FROM nvidia/cuda:11.0.3-base-ubuntu20.04
 
 
