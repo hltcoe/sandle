@@ -20,7 +20,7 @@
     <main>
       <div class="row">
         <div class="col-8">
-          <form class="my-3" @submit.prevent="getCompletionsAndUpdateText">
+          <form class="my-3" @submit.prevent="getCompletionsAndUpdatePrompt">
             <div class="my-3">
               <label class="form-label"
                 >Enter some text, then click "Submit" to generate a
@@ -31,13 +31,16 @@
                 :disabled="runningCompletions"
                 rows="10"
                 placeholder="Say this is a test."
-                v-model="text"
+                v-model="prompt"
                 ref="textbox"
-                @keypress.ctrl.enter.prevent="getCompletionsAndUpdateText"
+                @keypress.ctrl.enter.prevent="getCompletionsAndUpdatePrompt"
               />
             </div>
-            <div class="my-3 alert alert-danger" v-if="completionsAlert">
-              {{ completionsAlert }}
+            <div class="my-3 alert alert-danger" v-if="completionsError">
+              {{ completionsError }}
+            </div>
+            <div class="my-3 alert alert-warning" v-if="completionsWarning">
+              {{ completionsWarning }}
             </div>
             <div class="my-3 d-flex">
               <div>
@@ -132,10 +135,7 @@
               id="use-greedy-decoding-input"
               v-model="useGreedyDecoding"
             />
-            <label
-              class="form-check-label"
-              for="use-greedy-decoding-input"
-            >
+            <label class="form-check-label" for="use-greedy-decoding-input">
               Use greedy decoding
             </label>
           </div>
@@ -293,7 +293,7 @@ export default {
       maxNewTokens: 20,
       temperature: 1,
       topP: 1,
-      text: `I am a highly intelligent question answering bot. If you ask me a question that is rooted in truth, I will give you the answer. If you ask me a question that is nonsense, trickery, or has no clear answer, I will respond with "Unknown".
+      prompt: `I am a highly intelligent question answering bot. If you ask me a question that is rooted in truth, I will give you the answer. If you ask me a question that is nonsense, trickery, or has no clear answer, I will respond with "Unknown".
 
 Q: What is human life expectancy in the United States?
 A: Human life expectancy in the United States is 78 years.
@@ -318,7 +318,8 @@ A: Unknown
 
 Q: Where is the Valley of Kings?
 A:`,
-      completionsAlert: null,
+      completionsError: null,
+      completionsWarning: null,
       runningCompletions: false,
       previousCompletionsPrompt: null,
       stripTrailingWhitespace: true,
@@ -381,12 +382,12 @@ A:`,
         if (completions !== null) {
           const generatedText = completions.choices[0].text;
           if (generatedText !== null) {
-            this.text += generatedText;
+            this.prompt += generatedText;
           }
         }
       } else {
-        this.text =
-          (this.stripTrailingWhitespace ? this.text.trimEnd() : this.text) +
+        this.prompt =
+          (this.stripTrailingWhitespace ? this.prompt.trimEnd() : this.prompt) +
           this.completionSuffix;
         this.runningCompletions = false;
       }
@@ -396,26 +397,31 @@ A:`,
     },
     handleCompletionsError(event) {
       console.log(event);
-      this.completionsAlert = `${event.type}: ${event.detail}`;
+      this.completionsError = `${event.type}: ${event.detail}`;
       this.runningCompletions = false;
     },
     async redoPreviousCompletions() {
       if (this.previousCompletionsPrompt !== null) {
-        this.text = this.previousCompletionsPrompt;
-        await this.getCompletionsAndUpdateText();
+        this.prompt = this.previousCompletionsPrompt;
+        await this.getCompletionsAndUpdatePrompt();
       }
     },
-    async getCompletionsAndUpdateText() {
+    async getCompletionsAndUpdatePrompt() {
       if (!this.runningCompletions) {
-        this.completionsAlert = null;
-        this.previousCompletionsPrompt = this.text;
+        this.completionsError = null;
+        this.completionsWarning = null;
+        this.previousCompletionsPrompt = this.prompt;
+        if (this.prompt.endsWith(" ")) {
+          this.completionsWarning =
+            "Warning: The prompt ends with a space character which may cause performance issues.";
+        }
         try {
           const url = `http://${import.meta.env.VITE_OPENAISLE_HOST}:${
             import.meta.env.VITE_OPENAISLE_PORT
           }/v1/completions`;
           const payload = JSON.stringify({
             model: this.modelId,
-            prompt: this.text,
+            prompt: this.prompt,
             greedy_decoding: this.useGreedyDecoding,
             max_tokens: this.maxNewTokens,
             temperature: this.temperature,
@@ -434,7 +440,7 @@ A:`,
           source.stream();
         } catch (e) {
           console.log(e);
-          this.completionsAlert = `${e}`;
+          this.completionsError = `${e}`;
           this.runningCompletions = false;
         }
       }
