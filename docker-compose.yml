@@ -12,17 +12,17 @@ services:
   openai-wrapper:
     build: openai-wrapper
     command:
-      - http://opt:8000/v1/completions
+      - http://backend-hf:8000/v1/completions
       - --port
       - '8000'
     depends_on:
-      - opt
+      - backend-hf
     environment:
       - OPENAISLE_AUTH_TOKEN
     restart: unless-stopped
 
-  opt:
-    build: opt
+  backend-hf:
+    build: backend-hf
     command:
       - --port
       - '8000'

@@ -27,11 +27,11 @@ RUN /opt/anaconda3/bin/conda install -y pip && \
 
 # 4. Add application code
 
-COPY serve-opt.py /opt/openaisle/
+COPY serve-backend-hf.py /opt/openaisle/
 
 
 # 5. Perform remaining configuration
 
 ENV LANG="C.UTF-8"
 EXPOSE 8000
-ENTRYPOINT ["/opt/anaconda3/bin/conda", "run", "--no-capture-output", "python", "serve-opt.py"]
+ENTRYPOINT ["/opt/anaconda3/bin/conda", "run", "--no-capture-output", "python", "serve-backend-hf.py"]

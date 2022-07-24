@@ -5,8 +5,8 @@ Run a clone of OpenAI's API Service in your Local Environment ("OpenAISLE").
 
 This repository provides the following Docker services:
 
- * `opt`: a service that implements a subset of [the OpenAI `/v1/completions` API](https://beta.openai.com/docs) (without authentication) using a single-threaded web server on top of OPT.  Alone, this service is suitable for [a single user at a time](#serving-the-api-for-a-single-user-without-docker).
- * `openai-wrapper`: a service that implements a subset of [the OpenAI `/v1/models`, `/v1/models/<model>`, and `/v1/completions` APIs](https://beta.openai.com/docs) (with authentication), implementing the latter by calling the `opt` service.  It uses a multi-threaded web server and is suitable for multiple users.
+ * `backend-hf`: a service that implements a subset of [the OpenAI `/v1/completions` API](https://beta.openai.com/docs) (without authentication) using a single-threaded web server on top of HuggingFace, supporting `OPT` and `Bloom` at the time of writing.  Alone, this service is suitable for [a single user at a time](#serving-the-api-for-a-single-user-without-docker).
+ * `openai-wrapper`: a service that implements a subset of [the OpenAI `/v1/models`, `/v1/models/<model>`, and `/v1/completions` APIs](https://beta.openai.com/docs) (with authentication), implementing the latter by calling the `backend-hf` service.  It uses a multi-threaded web server and is suitable for multiple users.
  * `demo`: an [nginx](https://nginx.org) web server that acts as a reverse proxy in front of the API (the `openai-wrapper` service) and serves a web interface for text completion using the proxied API.
 
 These services can be run together on your local machine using [Docker Compose](https://docs.docker.com/compose/).  The Docker Compose configuration file (`docker-compose.yml`) specifies how they are invoked.
@@ -41,28 +41,28 @@ The Nvidia Tesla K80 is no longer actively supported by Nvidia and
 [newer versions of the `nvidia/cuda` Docker base image are configured
 not to run on K80 cuda drivers](https://gitlab.com/nvidia/container-images/cuda/-/issues/165#note_1005164251).  To work around this, modify the docker
 compose configuration to add the desired cuda driver version to the
-`NVIDIA_REQUIRE_CUDA` environment variable in the `opt` service.  For
+`NVIDIA_REQUIRE_CUDA` environment variable in the `backend-hf` service.  For
 example:
 
 ```yaml
 services:
-  opt:
+  backend-hf:
     environment:
       - 'NVIDIA_REQUIRE_CUDA=cuda>=11.0 brand=tesla,driver>=418,driver<419 brand=tesla,driver>=440,driver<441 driver>=450'
 ```
 
 ### Serving the API for a single user without Docker
 
-If you only need the API for a single user, it is easy to run the `opt` service by itself, outside of Docker.  Ensure the cuda toolkit and pytorch are installed, then install the Python requirements specified in `opt/requirements.txt`, and run (for example)
+If you only need the API for a single user, it is easy to run the `backend-hf` service by itself, outside of Docker.  Ensure the cuda toolkit and pytorch are installed, then install the Python requirements specified in `backend-hf/requirements.txt`, and run (for example)
 
 ```bash
-python opt/serve-opt.py --port 12349
+python backend-hf/serve-backend-hf.py --port 12349
 ```
 
 to serve the partial `/v1/completions` API on port 12349 on your local host.  The equivalent Docker usage would be (approximately):
 
 ```bash
-docker build -t $USER/opt opt && docker run -it -p 12349:8000 $USER/opt --port 8000
+docker build -t $USER/backend-hf backend-hf && docker run -it -p 12349:8000 $USER/backend-hf --port 8000
 ```
 
 ## Usage
@@ -146,7 +146,7 @@ docker-compose build openai-wrapper && docker-compose run --rm -p 54355:8000 --n
 Finally, do the following to build and run the stub backend on the default network created by Docker Compose:
 
 ```
-docker run --network openaisle_default --name opt --rm `docker build -q backend-stub`
+docker run --network openaisle_default --name backend-hf --rm `docker build -q backend-stub`
 ```
 
 ## Testing
