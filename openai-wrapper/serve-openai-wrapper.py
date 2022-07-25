@@ -126,7 +126,7 @@ def create_app(accepted_auth_token: str, backend_completions_url: str) -> Flask:
         model_data = get_model_data(model)
         if model_data is None:
             return make_error_response(
-                401,
+                404,
                 'That model does not exist',
                 'invalid_request_error',
             )

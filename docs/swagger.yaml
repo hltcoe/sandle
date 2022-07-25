@@ -41,11 +41,10 @@ paths:
           in: path
           description: Model ID to look up
           required: true
-          content:
-            application/json:
-              schema:
-                type: string
-                example: facebook%2Fopt-2.7b
+          style: simple
+          schema:
+            type: string
+            example: facebook/opt-125m
       responses:
         '200':
           description: Successful operation
@@ -53,8 +52,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Model'
-        '400':
-          description: Invalid model ID
+        '404':
+          description: Model does not exist
         '401':
           description: Invalid authorization
   /v1/completions:
@@ -81,13 +80,13 @@ paths:
                 description: >-
                   A stream of server-sent events representing chunks (subsegments) of the text completion.  Each event is a message with the `data` field populated.  Each chunk is encoded by a message whose `data` field value is a JSON-encoded Completion object.  In contrast to the non-streaming behavior, the `text` field of the `choices` list will contain a chunk of the newly generated text and will not contain the prompt.  The stream will end with a message with `data` field value of `[DONE]`.
                 example: |+
-                  data: {"id": "4f7e9dd3-c1b2-40bb-be72-24a5487c6beb", "object": "text_completion", "created": 1657745918, "model": "facebook/opt-2.7b", "choices": [{"text": " I have an egg", "index": 0, "logprobs": null, "finish_reason": null}], "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}}
+                  data: {"id": "4f7e9dd3-c1b2-40bb-be72-24a5487c6beb", "object": "text_completion", "created": 1657745918, "model": "facebook/opt-125m", "choices": [{"text": " I have an egg", "index": 0, "logprobs": null, "finish_reason": null}], "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}}
 
-                  data: {"id": "4f7e9dd3-c1b2-40bb-be72-24a5487c6beb", "object": "text_completion", "created": 1657745918, "model": "facebook/opt-2.7b", "choices": [{"text": " that matches your TS", "index": 0, "logprobs": null, "finish_reason": null}], "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}}
+                  data: {"id": "4f7e9dd3-c1b2-40bb-be72-24a5487c6beb", "object": "text_completion", "created": 1657745918, "model": "facebook/opt-125m", "choices": [{"text": " that matches your TS", "index": 0, "logprobs": null, "finish_reason": null}], "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}}
                   
-                  data: {"id": "4f7e9dd3-c1b2-40bb-be72-24a5487c6beb", "object": "text_completion", "created": 1657745918, "model": "facebook/opt-2.7b", "choices": [{"text": "V. Would you", "index": 0, "logprobs": null, "finish_reason": null}], "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}}
+                  data: {"id": "4f7e9dd3-c1b2-40bb-be72-24a5487c6beb", "object": "text_completion", "created": 1657745918, "model": "facebook/opt-125m", "choices": [{"text": "V. Would you", "index": 0, "logprobs": null, "finish_reason": null}], "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}}
                   
-                  data: {"id": "4f7e9dd3-c1b2-40bb-be72-24a5487c6beb", "object": "text_completion", "created": 1657745918, "model": "facebook/opt-2.7b", "choices": [{"text": " mind hatching it", "index": 0, "logprobs": null, "finish_reason": "length"}], "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}}
+                  data: {"id": "4f7e9dd3-c1b2-40bb-be72-24a5487c6beb", "object": "text_completion", "created": 1657745918, "model": "facebook/opt-125m", "choices": [{"text": " mind hatching it", "index": 0, "logprobs": null, "finish_reason": "length"}], "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}}
                   
                   data: [DONE]
 
@@ -102,7 +101,7 @@ components:
       properties:
         id:
           type: string
-          example: facebook/opt-2.7b
+          example: facebook/opt-125m
         object:
           type: string
           enum:
@@ -115,7 +114,7 @@ components:
           items:
             type: string
       example: >-
-        {"id":"facebook/opt-2.7b","object":"model","owned_by":"facebook","permission":[]}
+        {"id":"facebook/opt-125m","object":"model","owned_by":"facebook","permission":[]}
     Prompt:
       type: object
       properties:
@@ -178,7 +177,7 @@ components:
           nullable: true
           default: null
       example: >-
-        {"model": "facebook/opt-2.7b", "prompt": "Hello, "}
+        {"model": "facebook/opt-125m", "prompt": "Hello, "}
     Completion:
       type: object
       properties:
@@ -229,7 +228,7 @@ components:
                     type: integer
                     minimum: 0
       example: >-
-        {"choices":[{"finish_reason":"length","index":0,"logprobs":null,"text":"Hello,  I have an egg that matches your TSV. Would you mind hatching it"}],"created":1657745801,"id":"a6ad78e8-dac1-419b-80ee-7e4411710a81","model":"facebook/opt-2.7b","object":"text_completion","usage":{"completion_tokens":0,"prompt_tokens":0,"total_tokens":0}}
+        {"choices":[{"finish_reason":"length","index":0,"logprobs":null,"text":"Hello,  I have an egg that matches your TSV. Would you mind hatching it"}],"created":1657745801,"id":"a6ad78e8-dac1-419b-80ee-7e4411710a81","model":"facebook/opt-125m","object":"text_completion","usage":{"completion_tokens":0,"prompt_tokens":0,"total_tokens":0}}
   securitySchemes:
     basic:
       type: http
