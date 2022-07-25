@@ -188,7 +188,7 @@ components:
           minimum: 0
           default: 0
       example: >-
-        {"model": "facebook/opt-2.7b", "prompt": "Hello, "}
+        {"model": "facebook/opt-2.7b", "prompt": "Hello,"}
     Completion:
       type: object
       properties:
@@ -239,7 +239,7 @@ components:
                     type: integer
                     minimum: 0
       example: >-
-        {"choices":[{"finish_reason":"length","index":0,"logprobs":null,"text":"Hello,  I have an egg that matches your TSV. Would you mind hatching it"}],"created":1657745801,"id":"a6ad78e8-dac1-419b-80ee-7e4411710a81","model":"facebook/opt-2.7b","object":"text_completion","usage":{"completion_tokens":0,"prompt_tokens":0,"total_tokens":0}}
+        {"choices":[{"finish_reason":"length","index":0,"logprobs":null,"text":"Hello, I have an egg that matches your TSV. Would you mind hatching it"}],"created":1657745801,"id":"a6ad78e8-dac1-419b-80ee-7e4411710a81","model":"facebook/opt-2.7b","object":"text_completion","usage":{"completion_tokens":0,"prompt_tokens":0,"total_tokens":0}}
   securitySchemes:
     basic:
       type: http
