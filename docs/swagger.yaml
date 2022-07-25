@@ -150,6 +150,11 @@ components:
           minimum: 0
           maximum: 1
           default: 1
+        n:
+          description: Number of completions to generate per prompt
+          type: integer
+          minimum: 1
+          default: 1
         stream:
           description: >-
             Whether to stream completed text as it is

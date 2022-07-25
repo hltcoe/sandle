@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from itertools import chain
+from itertools import chain, zip_longest
 from time import time
 from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
 from uuid import uuid4
@@ -16,6 +16,7 @@ DEFAULT_STREAM_BATCH_SIZE = 0
 DEFAULT_MAX_TOKENS = 16
 DEFAULT_TEMPERATURE = 1.
 DEFAULT_TOP_P = 1.
+DEFAULT_NUM_RETURN_SEQUENCES = 1
 EOS = '</s>'
 DEFAULT_PROMPT = EOS
 END_OF_STREAM = '[DONE]'
@@ -29,6 +30,7 @@ MaxMemoryDict = Dict[Union[int, str], Union[int, str]]
 class Completion(NamedTuple):
     text: str
     finish_reason: Optional[str]
+    idx: int
 
 
 class RawCompletion(NamedTuple):
@@ -109,37 +111,73 @@ class LM:
                  max_new_tokens: int = DEFAULT_MAX_TOKENS,
                  do_sample: bool = True,
                  top_p: float = DEFAULT_TOP_P,
-                 temperature: float = DEFAULT_TEMPERATURE) -> Completion:
+                 temperature: float = DEFAULT_TEMPERATURE,
+                 num_return_sequences: int = DEFAULT_NUM_RETURN_SEQUENCES) -> List[Completion]:
         (tokenizer, model) = self.get_tokenizer_and_model(model_id)
 
-        raw_completion = self._complete(
-            text, tokenizer, model, stop_strings=stop_strings, max_new_tokens=max_new_tokens,
-            do_sample=do_sample, top_p=top_p, temperature=temperature)
+        return [
+            Completion(
+                text=raw_completion.new_text,
+                finish_reason=FINISH_REASON_EOS if raw_completion.truncated else FINISH_REASON_LENGTH,
+                idx=i,
+            )
+            for (i, raw_completion) in enumerate(self._complete(
+                text, tokenizer, model, stop_strings=stop_strings, max_new_tokens=max_new_tokens,
+                do_sample=do_sample, top_p=top_p, temperature=temperature,
+                num_return_sequences=num_return_sequences,
+            ))
+        ]
 
-        finish_reason = FINISH_REASON_EOS if raw_completion.truncated else FINISH_REASON_LENGTH
+    def stream_complete(
+            self, text: str, model_id: str,
+            stop_strings: List[str],
+            max_new_tokens: int = DEFAULT_MAX_TOKENS,
+            do_sample: bool = True,
+            top_p: float = DEFAULT_TOP_P,
+            temperature: float = DEFAULT_TEMPERATURE,
+            num_return_sequences: int = DEFAULT_NUM_RETURN_SEQUENCES,
+            stream_batch_size: int = DEFAULT_STREAM_BATCH_SIZE) -> Iterable[Completion]:
+        streams = [
+            self._stream_complete_single(
+                text, model_id, stop_strings,
+                max_new_tokens=max_new_tokens, do_sample=do_sample, top_p=top_p, temperature=temperature,
+                index=i, stream_batch_size=stream_batch_size,
+            )
+            for i in range(num_return_sequences)
+        ]
+        return (
+            c
+            for c in (
+                completion
+                for completions in zip_longest(*streams, fillvalue=None)
+                for completion in completions
+            )
+            if c is not None
+        )
 
-        return Completion(raw_completion.new_text, finish_reason)
-
-    def stream_complete(self, text: str, model_id: str,
-                        stop_strings: List[str],
-                        max_new_tokens: int = DEFAULT_MAX_TOKENS,
-                        do_sample: bool = True,
-                        top_p: float = DEFAULT_TOP_P,
-                        temperature: float = DEFAULT_TEMPERATURE,
-                        stream_batch_size: int = DEFAULT_STREAM_BATCH_SIZE) -> Iterable[Completion]:
+    def _stream_complete_single(
+            self, text: str, model_id: str,
+            stop_strings: List[str],
+            max_new_tokens: int = DEFAULT_MAX_TOKENS,
+            do_sample: bool = True,
+            top_p: float = DEFAULT_TOP_P,
+            temperature: float = DEFAULT_TEMPERATURE,
+            index: int = 0,
+            stream_batch_size: int = DEFAULT_STREAM_BATCH_SIZE) -> Iterable[Completion]:
         (tokenizer, model) = self.get_tokenizer_and_model(model_id)
 
         prompt = text
         num_new_tokens = 0
         finish_reason = None
         while finish_reason is None:
-            raw_completion = self._complete(
+            [raw_completion] = self._complete(
                 text, tokenizer, model, stop_strings=stop_strings,
                 max_new_tokens=min(
                     stream_batch_size if stream_batch_size > 0 else max_new_tokens,
                     max_new_tokens - num_new_tokens
                 ),
                 do_sample=do_sample, top_p=top_p, temperature=temperature,
+                num_return_sequences=1,
             )
 
             if raw_completion.truncated:
@@ -156,37 +194,47 @@ class LM:
                 raw_completion.text[len(prompt):],
                 stop_strings)
             if truncated:
+                truncation_index = len(prompt) + len(truncated_text_after_prompt)
                 yield Completion(
-                    raw_completion.text[-len(raw_completion.new_text):len(prompt) + len(truncated_text_after_prompt)],
-                    FINISH_REASON_EOS)
+                    text=raw_completion.text[-len(raw_completion.new_text):truncation_index],
+                    finish_reason=FINISH_REASON_EOS,
+                    idx=index,
+                )
             else:
-                yield Completion(raw_completion.new_text, finish_reason)
+                yield Completion(text=raw_completion.new_text, finish_reason=finish_reason, idx=index)
 
             text = raw_completion.text
 
     def _complete(self, text: str, tokenizer: AutoTokenizer, model: AutoModelForCausalLM,
                   stop_strings: List[str], max_new_tokens: int,
-                  do_sample: bool, top_p: float, temperature: float) -> RawCompletion:
+                  do_sample: bool, top_p: float, temperature: float,
+                  num_return_sequences: int) -> List[RawCompletion]:
         input_token_ids = tokenizer(text, return_tensors='pt')['input_ids']
         output_token_ids = model.generate(
             input_token_ids.to(self.main_device), max_new_tokens=max_new_tokens, do_sample=do_sample, top_p=top_p,
-            temperature=temperature)
-        output_text = clean_output_text(tokenizer.decode(output_token_ids[0].tolist()))
-        if output_text.startswith(text):
-            new_text = output_text[len(text):]
-            (new_text, truncated) = truncate_at_stops(new_text, stop_strings)
-            output_text = text + new_text
-            return RawCompletion(
-                text=output_text,
-                pretruncation_num_new_tokens=output_token_ids.size(dim=1) - input_token_ids.size(dim=1),
-                new_text=new_text,
-                truncated=truncated,
-            )
-        else:
-            raise Exception(f'Generated text "{output_text}" does not begin with input text "{text}"')
+            temperature=temperature, num_return_sequences=num_return_sequences,
+        )
+        completions = []
+        for completion_num in range(output_token_ids.shape[0]):
+            output_text = clean_output_text(tokenizer.decode(output_token_ids[completion_num].tolist()))
+            if output_text.startswith(text):
+                new_text = output_text[len(text):]
+                (new_text, truncated) = truncate_at_stops(new_text, stop_strings)
+                output_text = text + new_text
+                completions.append(RawCompletion(
+                    text=output_text,
+                    pretruncation_num_new_tokens=output_token_ids.size(dim=1) - input_token_ids.size(dim=1),
+                    new_text=new_text,
+                    truncated=truncated,
+                ))
+            else:
+                raise Exception(f'Generated text "{output_text}" does not begin with input text "{text}"')
+
+        return completions
 
 
-def make_api_completion(response_id: str, created: int, model_id: str, completion: Completion) -> Dict[str, Any]:
+def make_api_completions(response_id: str, created: int, model_id: str,
+                         completions: List[Completion]) -> Dict[str, Any]:
     return {
         'id': response_id,
         'object': 'text_completion',
@@ -195,10 +243,11 @@ def make_api_completion(response_id: str, created: int, model_id: str, completio
         'choices': [
             {
                 'text': completion.text,
-                'index': 0,
+                'index': completion.idx,
                 'logprobs': None,
                 'finish_reason': completion.finish_reason,
             }
+            for completion in completions
         ],
         'usage': {'prompt_tokens': 0, 'completion_tokens': 0, 'total_tokens': 0},
     }
@@ -227,6 +276,8 @@ def create_app(max_memory: Optional[MaxMemoryDict] = None,
         else:
             stops = []
 
+        num_return_sequences = int(request.json.get('n', DEFAULT_NUM_RETURN_SEQUENCES))
+
         stream = request.json.get('stream', False)
 
         greedy_decoding = request.json.get('greedy_decoding', False)
@@ -249,10 +300,11 @@ def create_app(max_memory: Optional[MaxMemoryDict] = None,
             return Response(
                 (f'data: {event_data}\n\n' for event_data in chain(
                     (
-                        json.dumps(make_api_completion(response_id, created, model_id, completion))
+                        json.dumps(make_api_completions(response_id, created, model_id, [completion]))
                         for completion in lm.stream_complete(
                             prompt, model_id, stops, max_new_tokens=max_tokens,
                             do_sample=not greedy_decoding, top_p=top_p, temperature=temperature,
+                            num_return_sequences=num_return_sequences,
                             stream_batch_size=stream_batch_size,
                         )
                     ),
@@ -262,10 +314,11 @@ def create_app(max_memory: Optional[MaxMemoryDict] = None,
                 headers={'X-Accel-Buffering': 'no'},  # tell nginx not to buffer
             )
         else:
-            completion = lm.complete(
+            return jsonify(make_api_completions(response_id, created, model_id, lm.complete(
                 prompt, model_id, stops, max_new_tokens=max_tokens,
-                do_sample=not greedy_decoding, top_p=top_p, temperature=temperature)
-            return jsonify(make_api_completion(response_id, created, model_id, completion))
+                do_sample=not greedy_decoding, top_p=top_p, temperature=temperature,
+                num_return_sequences=num_return_sequences,
+            )))
 
     return app
 
