@@ -28,8 +28,9 @@ By default, the demo web interface and API endpoint will be bound to port 80 on 
 
 #### BRTX
 
-The docker compose version installed on BRTX is outdated and does not
-work with our docker compose configuration file.  To use docker compose
+The Docker Compose version installed on BRTX is older and does not
+work with our configuration file, which requires Docker Compose
+v1.28.0 or later.  To use Docker Compose
 on BRTX, [install a new, standalone version of docker
 compose](https://docs.docker.com/compose/install/compose-plugin/#install-the-plugin-manually)
 to your home directory and run that version instead of the
