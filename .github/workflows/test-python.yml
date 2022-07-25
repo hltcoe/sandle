@@ -1,0 +1,35 @@
+name: Test Python Components
+
+on: [push]
+
+jobs:
+  test-python:
+    strategy:
+      matrix:
+        subdir:
+          - backend-hf
+          - backend-stub
+          - openaisle-wrapper
+
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v3
+      with:
+        python-version: 3.9
+    - name: Add conda to system path
+      run: |
+        # $CONDA is an environment variable pointing to the root of the miniconda directory
+        echo $CONDA/bin >> $GITHUB_PATH
+    - name: Install dependencies
+      run: |
+        pip install -r ${{ matrix.subdir }}/requirements.txt
+        pip install -r ${{ matrix.subdir }}/dev-requirements.txt
+    - name: Perform static analysis
+      run: |
+        cd ${{ matrix.subdir }} && flake8 && mypy
+    #- name: Test with pytest
+    #  run: |
+    #    pip install pytest
+    #    pytest
