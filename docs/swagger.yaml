@@ -6,10 +6,6 @@ info:
   title: OpenAisle
   contact:
     name: HLTCOE
-servers:
-  # Added by API Auto Mocking Plugin
-  - description: SwaggerHub API Auto Mocking
-    url: https://virtserver.swaggerhub.com/cmay14/OpenAisle/0.0.1
 security:
   - basic: []
   - bearer: []
