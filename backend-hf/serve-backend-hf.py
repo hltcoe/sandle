@@ -12,7 +12,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from waitress import serve
 
 
-STREAM_TOKEN_BATCH_SIZE = 4
+DEFAULT_STREAM_BATCH_SIZE = 0
 DEFAULT_MAX_TOKENS = 16
 DEFAULT_TEMPERATURE = 1.
 DEFAULT_TOP_P = 1.
@@ -126,7 +126,7 @@ class LM:
                         do_sample: bool = True,
                         top_p: float = DEFAULT_TOP_P,
                         temperature: float = DEFAULT_TEMPERATURE,
-                        token_batch_size: int = STREAM_TOKEN_BATCH_SIZE) -> Iterable[Completion]:
+                        stream_batch_size: int = DEFAULT_STREAM_BATCH_SIZE) -> Iterable[Completion]:
         (tokenizer, model) = self.get_tokenizer_and_model(model_id)
 
         prompt = text
@@ -135,7 +135,10 @@ class LM:
         while finish_reason is None:
             raw_completion = self._complete(
                 text, tokenizer, model, stop_strings=stop_strings,
-                max_new_tokens=min(token_batch_size, max_new_tokens - num_new_tokens),
+                max_new_tokens=min(
+                    stream_batch_size if stream_batch_size > 0 else max_new_tokens,
+                    max_new_tokens - num_new_tokens
+                ),
                 do_sample=do_sample, top_p=top_p, temperature=temperature,
             )
 
@@ -238,6 +241,8 @@ def create_app(max_memory: Optional[MaxMemoryDict] = None,
         tokens_log_text = 'token' if max_tokens == 1 else 'tokens'
         logging.debug(f'Computing {completion_log_text} of up to {max_tokens} {tokens_log_text} for user {user}')
 
+        stream_batch_size = int(request.json.get('stream_batch_size', DEFAULT_STREAM_BATCH_SIZE))
+
         response_id = generate_response_id()
         created = get_timestamp()
         if stream:
@@ -248,7 +253,7 @@ def create_app(max_memory: Optional[MaxMemoryDict] = None,
                         for completion in lm.stream_complete(
                             prompt, model_id, stops, max_new_tokens=max_tokens,
                             do_sample=not greedy_decoding, top_p=top_p, temperature=temperature,
-                            token_batch_size=max_tokens,  # use maximal batch size b/c current batcher scales poorly
+                            stream_batch_size=stream_batch_size,
                         )
                     ),
                     [END_OF_STREAM],

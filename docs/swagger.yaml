@@ -132,11 +132,6 @@ components:
           type: integer
           minimum: 1
           default: 16
-        greedy_decoding:
-          description: >-
-            Whether to use greedy decoding or sampling for generation
-          type: boolean
-          default: false
         temperature:
           description: >-
             Sampling temperature.  Set to 1 to disable;
@@ -177,6 +172,21 @@ components:
           type: string
           nullable: true
           default: null
+        greedy_decoding:
+          description: >-
+            Whether to use greedy decoding or sampling for generation.
+            This option is an extension of the OpenAI API.
+          type: boolean
+          default: false
+        stream_batch_size:
+          description: >-
+            Maximum number of completion tokens to generate per batch
+            (per message) when `stream` is true.
+            If zero, generate the entire completion in one batch.
+            This option is an extension of the OpenAI API.
+          type: integer
+          minimum: 0
+          default: 0
       example: >-
         {"model": "facebook/opt-2.7b", "prompt": "Hello, "}
     Completion:
@@ -216,7 +226,7 @@ components:
                 type: string
                 enum: [stop, length]
               usage:
-                description: Resources used for this request
+                description: Resources used for this request (not currently used)
                 type: object
                 properties:
                   prompt_tokens:
