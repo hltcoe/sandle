@@ -1,9 +1,9 @@
 import json
 import logging
 from random import randint
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from flask import Flask, jsonify, Response, request
+from flask import Flask, jsonify, make_response, Response, request
 from waitress import serve
 
 
@@ -28,8 +28,48 @@ def make_api_completion() -> Dict[str, Any]:
     }
 
 
+def make_error_response(status: int, message: str, error_type: str,
+                        param: Optional[Any] = None, code: Optional[str] = None) -> Response:
+    return make_response((
+        {
+            'error': {
+                'message': message,
+                'type': error_type,
+                'param': param,
+                'code': code,
+            },
+        },
+        status,
+    ))
+
+
 def create_app() -> Flask:
     app = Flask(__name__)
+
+    @app.errorhandler(404)
+    def invalid_url(error):
+        return make_error_response(
+            404,
+            f'Invalid URL ({request.method} {request.path})',
+            'invalid_request_error',
+        )
+
+    @app.errorhandler(405)
+    def invalid_method(error):
+        return make_error_response(
+            405,
+            f'Not allowed to {request.method} on {request.path} '
+            '(HINT: Perhaps you meant to use a different HTTP method?)',
+            'invalid_request_error',
+        )
+
+    @app.errorhandler(500)
+    def internal_server_error(error):
+        return make_error_response(
+            500,
+            'The server encountered an internal error',
+            'internal_server_error',
+        )
 
     @app.route('/v1/completions', methods=['POST'])
     def post_completions():

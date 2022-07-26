@@ -7,7 +7,7 @@ from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
 from uuid import uuid4
 
 import torch
-from flask import Flask, jsonify, Response, request
+from flask import Flask, jsonify, make_response, Response, request
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from waitress import serve
 
@@ -253,12 +253,52 @@ def make_api_completions(response_id: str, created: int, model_id: str,
     }
 
 
+def make_error_response(status: int, message: str, error_type: str,
+                        param: Optional[Any] = None, code: Optional[str] = None) -> Response:
+    return make_response((
+        {
+            'error': {
+                'message': message,
+                'type': error_type,
+                'param': param,
+                'code': code,
+            },
+        },
+        status,
+    ))
+
+
 def create_app(max_memory: Optional[MaxMemoryDict] = None,
                offload_dir: Optional[str] = None,
                preload_model: Optional[str] = None) -> Flask:
     lm = LM(max_memory, offload_dir, preload_model)
 
     app = Flask(__name__)
+
+    @app.errorhandler(404)
+    def invalid_url(error):
+        return make_error_response(
+            404,
+            f'Invalid URL ({request.method} {request.path})',
+            'invalid_request_error',
+        )
+
+    @app.errorhandler(405)
+    def invalid_method(error):
+        return make_error_response(
+            405,
+            f'Not allowed to {request.method} on {request.path} '
+            '(HINT: Perhaps you meant to use a different HTTP method?)',
+            'invalid_request_error',
+        )
+
+    @app.errorhandler(500)
+    def internal_server_error(error):
+        return make_error_response(
+            500,
+            'The server encountered an internal error',
+            'internal_server_error',
+        )
 
     @app.route('/v1/completions', methods=['POST'])
     def post_completions():

@@ -110,6 +110,31 @@ def create_app(accepted_auth_token: str, backend_completions_url: str) -> Flask:
     basic_auth.error_handler(auth_error)
     token_auth.error_handler(auth_error)
 
+    @app.errorhandler(404)
+    def invalid_url(error):
+        return make_error_response(
+            404,
+            f'Invalid URL ({request.method} {request.path})',
+            'invalid_request_error',
+        )
+
+    @app.errorhandler(405)
+    def invalid_method(error):
+        return make_error_response(
+            405,
+            f'Not allowed to {request.method} on {request.path} '
+            '(HINT: Perhaps you meant to use a different HTTP method?)',
+            'invalid_request_error',
+        )
+
+    @app.errorhandler(500)
+    def internal_server_error(error):
+        return make_error_response(
+            500,
+            'The server encountered an internal error',
+            'internal_server_error',
+        )
+
     @app.route('/v1/models')
     @strip_www_authenticate_header
     @multi_auth.login_required
