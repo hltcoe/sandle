@@ -5,10 +5,11 @@ from base64 import b64encode
 from functools import wraps
 from typing import Any, cast, Dict, Optional
 
-import requests
 from flask import Flask, jsonify, make_response, Response, request
 from flask_cors import CORS
 from flask_httpauth import HTTPBasicAuth, HTTPTokenAuth, MultiAuth
+import requests
+from requests.exceptions import ConnectionError, Timeout
 from waitress import serve
 
 
@@ -199,7 +200,20 @@ def create_app(accepted_auth_token: str, backend_completions_url: str) -> Flask:
 
         if model_data is not None:
             stream = request_json.get('stream', False)
-            r = requests.post(backend_completions_url, json=request_json, stream=stream)
+            try:
+                r = requests.post(backend_completions_url, json=request_json, stream=stream)
+            except ConnectionError:
+                return make_error_response(
+                    502,
+                    'Error connecting to backend service.',
+                    'internal_server_error',
+                )
+            except Timeout:
+                return make_error_response(
+                    504,
+                    'Timeout connecting to backend service.',
+                    'internal_server_error',
+                )
             headers = {}
             for passthru_header in ('X-Accel-Buffering', 'Content-Type'):
                 if passthru_header in r.headers:
