@@ -2,10 +2,10 @@
 <template>
   <div class="container my-5">
     <header class="my-4">
-      <h1>HuggingFace OPT API Demo &#x1F495;</h1>
+      <h1>HuggingFace LLM API Demo &#x1F495;</h1>
       <h6 class="text-muted">
         This web app uses a subset of the OpenAI API to communicate with a local
-        deployment of OPT on HuggingFace.
+        deployment of large language models in HuggingFace.
       </h6>
     </header>
 
