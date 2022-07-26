@@ -261,22 +261,8 @@ import { SSE } from "sse.js";
 const BASE_64_REGEX = /^[A-Za-z0-9+/=]*$/;
 
 function formatAxiosError(e) {
-  if (e.response) {
-    if (e.response.status === 400) {
-      return "Bad request.";
-    } else if (e.response.status === 401) {
-      return "Invalid authorization.";
-    } else if (e.response.status === 403) {
-      return "Authorization is not sufficient.";
-    } else if (e.response.status === 504) {
-      return "Request timed out.";
-    } else if (e.response.status > 0) {
-      return `HTTP ${e.response.status}: ${e.response.data}`;
-    } else {
-      return `${e}`;
-    }
-  } else if (e.request) {
-    return "Received no response from server.";
+  if (e.response && e.response.data && e.response.data.error && e.response.data.error.message) {
+    return e.response.data.error.message;
   } else {
     return e.message;
   }
@@ -397,7 +383,7 @@ A:`,
     },
     handleCompletionsError(event) {
       console.log(event);
-      this.completionsError = `${event.type}: ${event.detail}`;
+      this.completionsError = `Error streaming completions: The backend may be busy or down`;
       this.runningCompletions = false;
     },
     async redoPreviousCompletions() {
@@ -440,7 +426,7 @@ A:`,
           source.stream();
         } catch (e) {
           console.log(e);
-          this.completionsError = `${e}`;
+          this.completionsError = `Error setting up completions stream: ${e}`;
           this.runningCompletions = false;
         }
       }
