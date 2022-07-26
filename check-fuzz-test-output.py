@@ -10,4 +10,4 @@ with open(Path(output_directory) / 'ResponseBuckets/runSummary.json') as f:
     run_summary = json.load(f)
 
 print(json.dumps(run_summary, indent=2))
-sys.exit(run_summary['failedRequestsCount'])
+sys.exit(run_summary['bugCount'])
