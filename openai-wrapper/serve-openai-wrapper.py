@@ -3,7 +3,7 @@ import os
 import secrets
 from base64 import b64encode
 from functools import wraps
-from typing import Any, cast, Dict, Optional
+from typing import Any, cast, Dict, List, Optional
 
 from flask import Flask, jsonify, make_response, Response, request
 from flask_cors import CORS
@@ -57,7 +57,7 @@ def generate_auth_token(password_length: int = 16) -> str:
 
 # flask-httpauth is super helpful and sets WWW-Authenticate to prompt the
 # user for a password, but we want to handle authentication ourselves, so we
-# in and remove it
+# step in and remove it
 def strip_www_authenticate_header(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -83,7 +83,8 @@ def make_error_response(status: int, message: str, error_type: str,
     ))
 
 
-def create_app(accepted_auth_token: str, backend_completions_url: str) -> Flask:
+def create_app(accepted_auth_tokens: List[str], backend_completions_url: str,
+               auth_token_is_user: bool = False) -> Flask:
     app = Flask(__name__)
 
     # We use CORS just to facilitate development and debugging
@@ -93,13 +94,19 @@ def create_app(accepted_auth_token: str, backend_completions_url: str) -> Flask:
     token_auth = HTTPTokenAuth(scheme='Bearer')
     multi_auth = MultiAuth(basic_auth, token_auth)
 
+    def _verify_token(token):
+        if token in accepted_auth_tokens:
+            return token if auth_token_is_user else True
+        else:
+            return False
+
     @basic_auth.verify_password
     def verify_password(username, password):
-        return password == accepted_auth_token
+        return _verify_token(password)
 
     @token_auth.verify_token
     def verify_token(token):
-        return token == accepted_auth_token
+        return _verify_token(token)
 
     def auth_error(status):
         return make_error_response(
@@ -200,6 +207,8 @@ def create_app(accepted_auth_token: str, backend_completions_url: str) -> Flask:
 
         if model_data is not None:
             stream = request_json.get('stream', False)
+            if auth_token_is_user:
+                request_json['user'] = multi_auth.current_user()
             try:
                 r = requests.post(backend_completions_url, json=request_json, stream=stream)
             except ConnectionError:
@@ -241,9 +250,13 @@ def main():
                         help='Hostname or IP to serve on')
     parser.add_argument('-p', '--port', type=int, default=8000,
                         help='Port to serve on')
-    parser.add_argument('-t', '--auth-token',
+    parser.add_argument('-t', '--auth-token', action='append',
                         help='Base-64--encoded authorization token (API key) to accept; '
-                             'if not specified, one will be generated on startup.')
+                             'can be specified more than once to accept multiple tokens. '
+                             'If none are specified, one will be generated on startup.')
+    parser.add_argument('-u', '--auth-token-is-user', action='store_true',
+                        help='If true, use the authorization token as the API user. '
+                             'This behavior may result in auth tokens showing up in logs.')
     parser.add_argument('-m', '--allow-model', action='append', metavar='model',
                         choices=tuple(m['id'] for m in MODELS),
                         help='Allow only the specified model(s) to be used. '
@@ -257,15 +270,15 @@ def main():
     logging.basicConfig(format='[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s',
                         level=args.log_level)
 
-    if args.auth_token is not None:
-        auth_token = args.auth_token
-        logging.info('Authorization token (API key) read from command-line argument')
+    if args.auth_token:
+        auth_tokens = args.auth_token
+        logging.info('Authorization tokens (API keys) read from command-line argument')
     elif os.environ.get('OPENAISLE_AUTH_TOKEN'):
-        auth_token = os.environ['OPENAISLE_AUTH_TOKEN']
+        auth_tokens = [os.environ['OPENAISLE_AUTH_TOKEN']]
         logging.info('Authorization token (API key) read from environment variable')
     else:
-        auth_token = generate_auth_token()
-        logging.info(f'Generated authorization token (API key): {auth_token}')
+        auth_tokens = [generate_auth_token()]
+        logging.info(f'Generated authorization token (API key): {auth_tokens[0]}')
 
     if args.allow_model:
         allowed_models_set = set(args.allow_model)
@@ -275,7 +288,11 @@ def main():
         for model_to_remove in models_to_remove:
             MODELS.remove(model_to_remove)
 
-    app = create_app(accepted_auth_token=auth_token, backend_completions_url=args.backend_completions_url)
+    app = create_app(
+        accepted_auth_tokens=auth_tokens,
+        backend_completions_url=args.backend_completions_url,
+        auth_token_is_user=args.auth_token_is_user,
+    )
     serve(app, host=args.host, port=args.port)
 
 

@@ -76,7 +76,7 @@
         </div>
         <div class="col-4">
           <div class="m-3">
-            <label class="form-label" for="api-key-input"> API key </label>
+            <label class="form-label" for="api-key-input"> API key or password </label>
             <div class="d-flex">
               <input
                 type="text"
