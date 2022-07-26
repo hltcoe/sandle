@@ -94,6 +94,8 @@ paths:
           description: Invalid request specification
         '401':
           description: Invalid authorization
+        '404':
+          description: Model does not exist
 components:
   schemas:
     Model:
