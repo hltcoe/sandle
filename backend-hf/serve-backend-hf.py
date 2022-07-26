@@ -287,8 +287,10 @@ def create_app(max_memory: Optional[MaxMemoryDict] = None,
     def invalid_method(error):
         return make_error_response(
             405,
-            f'Not allowed to {request.method} on {request.path} '
-            '(HINT: Perhaps you meant to use a different HTTP method?)',
+            (
+                f'Not allowed to {request.method} on {request.path} '
+                '(HINT: Perhaps you meant to use a different HTTP method?)'
+            ),
             'invalid_request_error',
         )
 
@@ -302,37 +304,74 @@ def create_app(max_memory: Optional[MaxMemoryDict] = None,
 
     @app.route('/v1/completions', methods=['POST'])
     def post_completions():
-        max_tokens = int(request.json.get('max_tokens', DEFAULT_MAX_TOKENS))
+        if not request.is_json:
+            return make_error_response(
+                400,
+                (
+                    'Your request does not have a JSON Content-Type header. '
+                    'The API expects "Content-Type: application/json".'
+                ),
+                'invalid_request_error',
+            )
 
-        model_id = request.json['model']
+        try:
+            request_json = request.get_json()
+            if not isinstance(request_json, dict):
+                raise Exception('Request body is not a JSON dictionary')
+        except Exception:
+            return make_error_response(
+                400,
+                (
+                    'We could not parse the JSON body of your request. '
+                    '(HINT: This likely means you aren\'t using your HTTP library correctly. '
+                    'The API expects a JSON payload, but what was sent was not valid JSON.'
+                ),
+                'invalid_request_error',
+            )
 
-        prompt = request.json.get('prompt', DEFAULT_PROMPT)
+        try:
+            max_tokens = int(request_json.get('max_tokens', DEFAULT_MAX_TOKENS))
 
-        _stop = request.json.get('stop')
-        if isinstance(_stop, list):
-            stops = _stop
-        elif isinstance(_stop, str):
-            stops = [_stop]
-        else:
-            stops = []
+            model_id = request_json['model']
+            if not isinstance(model_id, str) or not model_id:
+                raise Exception('model must be a non-empty string')
 
-        num_return_sequences = int(request.json.get('n', DEFAULT_NUM_RETURN_SEQUENCES))
+            prompt = request_json.get('prompt', DEFAULT_PROMPT)
+            if not isinstance(prompt, str):
+                raise Exception('prompt must be a string')
 
-        stream = request.json.get('stream', False)
+            _stop = request_json.get('stop')
+            if isinstance(_stop, list):
+                stops = _stop
+            elif isinstance(_stop, str):
+                stops = [_stop]
+            else:
+                stops = []
 
-        greedy_decoding = request.json.get('greedy_decoding', False)
+            num_return_sequences = int(request_json.get('n', DEFAULT_NUM_RETURN_SEQUENCES))
 
-        temperature = float(request.json.get('temperature', DEFAULT_TEMPERATURE))
+            stream = request_json.get('stream', False)
 
-        top_p = float(request.json.get('top_p', DEFAULT_TOP_P))
+            greedy_decoding = request_json.get('greedy_decoding', False)
 
-        user = request.json.get('user')
+            temperature = float(request_json.get('temperature', DEFAULT_TEMPERATURE))
 
-        completion_log_text = 'streaming completion' if stream else 'completion'
-        tokens_log_text = 'token' if max_tokens == 1 else 'tokens'
-        logging.debug(f'Computing {completion_log_text} of up to {max_tokens} {tokens_log_text} for user {user}')
+            top_p = float(request_json.get('top_p', DEFAULT_TOP_P))
 
-        stream_batch_size = int(request.json.get('stream_batch_size', DEFAULT_STREAM_BATCH_SIZE))
+            user = request_json.get('user')
+
+            completion_log_text = 'streaming completion' if stream else 'completion'
+            tokens_log_text = 'token' if max_tokens == 1 else 'tokens'
+            logging.debug(f'Computing {completion_log_text} of up to {max_tokens} {tokens_log_text} for user {user}')
+
+            stream_batch_size = int(request_json.get('stream_batch_size', DEFAULT_STREAM_BATCH_SIZE))
+
+        except Exception as ex:
+            return make_error_response(
+                400,
+                str(ex),
+                'invalid_request_error',
+            )
 
         response_id = generate_response_id()
         created = get_timestamp()

@@ -148,7 +148,11 @@ def create_app(accepted_auth_token: str, backend_completions_url: str) -> Flask:
     @strip_www_authenticate_header
     @multi_auth.login_required
     def get_model(model):
-        model_data = get_model_data(model)
+        try:
+            model_data = get_model_data(model)
+        except Exception:
+            model_data = None
+
         if model_data is None:
             return make_error_response(
                 404,
@@ -162,21 +166,51 @@ def create_app(accepted_auth_token: str, backend_completions_url: str) -> Flask:
     @strip_www_authenticate_header
     @multi_auth.login_required
     def post_completions():
-        model_data = get_model_data(request.json.get('model'))
-        if model_data is None:
+        if not request.is_json:
             return make_error_response(
-                404,
-                'That model does not exist',
+                400,
+                (
+                    'Your request does not have a JSON Content-Type header. '
+                    'The API expects "Content-Type: application/json".'
+                ),
                 'invalid_request_error',
             )
-        else:
-            stream = request.json.get('stream', False)
-            r = requests.post(backend_completions_url, json=request.json, stream=stream)
+
+        try:
+            request_json = request.get_json()
+            if not isinstance(request_json, dict):
+                raise Exception('Request body is not a JSON dictionary')
+        except Exception:
+            return make_error_response(
+                400,
+                (
+                    'We could not parse the JSON body of your request. '
+                    '(HINT: This likely means you aren\'t using your HTTP library correctly. '
+                    'The API expects a JSON payload, but what was sent was not valid JSON.'
+                ),
+                'invalid_request_error',
+            )
+
+        model = request_json.get('model')
+        try:
+            model_data = get_model_data(model)
+        except Exception:
+            model_data = None
+
+        if model_data is not None:
+            stream = request_json.get('stream', False)
+            r = requests.post(backend_completions_url, json=request_json, stream=stream)
             headers = {}
             for passthru_header in ('X-Accel-Buffering', 'Content-Type'):
                 if passthru_header in r.headers:
                     headers[passthru_header] = r.headers[passthru_header]
             return Response(r.iter_content(chunk_size=None), status=r.status_code, headers=headers)
+        else:
+            return make_error_response(
+                404,
+                'That model does not exist',
+                'invalid_request_error',
+            )
 
     return app
 
