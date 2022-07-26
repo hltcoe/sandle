@@ -360,8 +360,13 @@ def create_app(max_memory: Optional[MaxMemoryDict] = None,
 
             user = request_json.get('user')
 
+            completion_log_text = 'completion' if num_return_sequences == 1 else 'completions'
+            if stream:
+                completion_log_text = 'streaming ' + completion_log_text
             completion_log_text = 'streaming completion' if stream else 'completion'
             tokens_log_text = 'token' if max_tokens == 1 else 'tokens'
+            if num_return_sequences != 1:
+                tokens_log_text = tokens_log_text + ' each'
             logging.debug(f'Computing {completion_log_text} of up to {max_tokens} {tokens_log_text} for user {user}')
 
             stream_batch_size = int(request_json.get('stream_batch_size', DEFAULT_STREAM_BATCH_SIZE))
