@@ -1,5 +1,5 @@
 # openaisle
-Run a clone of OpenAI's API Service in your Local Environment ("OpenAISLE").
+Run a large language modeling SANDbox in your Local Environment ("SANDLE").
 
 ## Setup
 
