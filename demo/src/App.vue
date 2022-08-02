@@ -2,7 +2,7 @@
 <template>
   <div class="container my-5">
     <header class="my-4">
-      <h1>HuggingFace LLM API Demo &#x1F495;</h1>
+      <h1>SANDLE Demo &#x1F495;</h1>
       <h6 class="text-muted">
         This web app uses a subset of the OpenAI API to communicate with a local
         deployment of large language models in HuggingFace.
@@ -11,7 +11,7 @@
 
     <a
       class="github-fork-ribbon position-absolute position-top-0 position-end-0"
-      href="https://github.com/hltcoe/openaisle"
+      href="https://github.com/hltcoe/sandle"
       data-ribbon="Fork me on GitHub"
       title="Fork me on GitHub"
       >Fork me on GitHub</a
@@ -216,7 +216,7 @@
                 please let us know!
               </p>
               <a
-                href="https://github.com/hltcoe/openaisle/issues/new"
+                href="https://github.com/hltcoe/sandle/issues/new"
                 class="card-link"
                 >Create issue on GitHub</a
               >

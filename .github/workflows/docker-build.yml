@@ -1,9 +1,6 @@
-name: ci
+name: Test Docker Builds
 
-on:
-  push:
-    branches:
-      - 'main'
+on: [push]
 
 jobs:
   docker:
@@ -13,10 +10,11 @@ jobs:
           - demo
           - backend-hf
           - backend-stub
-          - openaisle-wrapper
+          - openai-wrapper
 
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2

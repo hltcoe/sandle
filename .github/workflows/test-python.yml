@@ -9,7 +9,7 @@ jobs:
         subdir:
           - backend-hf
           - backend-stub
-          - openaisle-wrapper
+          - openai-wrapper
 
     runs-on: ubuntu-latest
     steps:

@@ -1,5 +1,5 @@
 # openaisle
-Run a clone of OpenAI's API Service in your Local Environment ("OpenAISLE").
+Run a large language modeling SANDbox in your Local Environment ("SANDLE").
 
 ## Setup
 
@@ -188,4 +188,8 @@ Example runtime test using the Apache Bench tool (installed by default on OS X):
 ab -n 10 -c 1 -s 60 -p qa.txt -T application/json -A :YOUR_API_KEY -m POST http://YOUR_OPENAISLE_SERVER/v1/completions
 ```
 
-where `qa.txt` is a text file in the current directory that contains the prompt JSON (for example, `{"model": "facebook/opt-2.7b", "prompt": "Say this is a test"}`).
+where `qa.txt` is a text file in the current directory that contains the prompt JSON.  Example file contents:
+
+```json
+{"model": "facebook/opt-2.7b", "prompt": "Say this is a test"}
+```
