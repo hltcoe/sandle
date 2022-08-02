@@ -231,7 +231,7 @@
                 A subset of the OpenAI API is currently implemented on top of
                 HuggingFace.
               </p>
-              <a href="https://hltcoe.github.io/openaisle/" class="card-link"
+              <a href="https://hltcoe.github.io/sandle/" class="card-link"
                 >Read API docs</a
               >
             </div>
@@ -242,7 +242,7 @@
             <div class="card-body">
               <h6 class="card-title">Source Code</h6>
               <p class="card-text">Want to use or modify this code?</p>
-              <a href="https://github.com/hltcoe/openaisle" class="card-link"
+              <a href="https://github.com/hltcoe/sandle" class="card-link"
                 >Go to GitHub repository</a
               >
             </div>
@@ -317,7 +317,7 @@ A:`,
     safeAPIKey() {
       return this.apiKey && BASE_64_REGEX.test(this.apiKey) ? this.apiKey : "";
     },
-    openAisleHeaders() {
+    sandleHeaders() {
       return {
         "Content-Type": "application/json",
         Authorization: `Bearer ${this.safeAPIKey}`,
@@ -349,11 +349,11 @@ A:`,
     async getModels() {
       this.modelsAlert = null;
       try {
-        const url = `http://${import.meta.env.VITE_OPENAISLE_HOST}:${
-          import.meta.env.VITE_OPENAISLE_PORT
+        const url = `http://${import.meta.env.VITE_SANDLE_HOST}:${
+          import.meta.env.VITE_SANDLE_PORT
         }/v1/models`;
         const response = await axios.get(url, {
-          headers: this.openAisleHeaders,
+          headers: this.sandleHeaders,
         });
         return response.data.data;
       } catch (e) {
@@ -402,8 +402,8 @@ A:`,
             "Warning: The prompt ends with a space character which may cause performance issues.";
         }
         try {
-          const url = `http://${import.meta.env.VITE_OPENAISLE_HOST}:${
-            import.meta.env.VITE_OPENAISLE_PORT
+          const url = `http://${import.meta.env.VITE_SANDLE_HOST}:${
+            import.meta.env.VITE_SANDLE_PORT
           }/v1/completions`;
           const payload = JSON.stringify({
             model: this.modelId,
@@ -418,7 +418,7 @@ A:`,
           this.runningCompletions = true;
           const source = new SSE(url, {
             payload: payload,
-            headers: this.openAisleHeaders,
+            headers: this.sandleHeaders,
           });
           source.addEventListener("message", this.handleCompletionsMessage);
           source.addEventListener("error", this.handleCompletionsError);

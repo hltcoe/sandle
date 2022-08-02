@@ -15,11 +15,11 @@ RUN curl https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -
 
 # 2. Install Python dependencies
 
-WORKDIR /opt/openaisle
-COPY requirements.txt /opt/openaisle/
+WORKDIR /opt/sandle
+COPY requirements.txt /opt/sandle/
 RUN /opt/anaconda3/bin/conda install -y pip && \
     /opt/anaconda3/bin/conda install -y pytorch torchvision torchaudio -c pytorch && \
-    /opt/anaconda3/bin/conda run --no-capture-output pip install -r /opt/openaisle/requirements.txt
+    /opt/anaconda3/bin/conda run --no-capture-output pip install -r /opt/sandle/requirements.txt
 
 
 # 3. Add large model files
@@ -27,7 +27,7 @@ RUN /opt/anaconda3/bin/conda install -y pip && \
 
 # 4. Add application code
 
-COPY serve-backend-hf.py /opt/openaisle/
+COPY serve-backend-hf.py /opt/sandle/
 
 
 # 5. Perform remaining configuration
