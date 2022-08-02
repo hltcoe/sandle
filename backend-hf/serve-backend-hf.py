@@ -3,12 +3,14 @@ import logging
 import os
 from itertools import chain, zip_longest
 from time import time
-from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
+from typing import Any, cast, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
 from uuid import uuid4
 
 import torch
 from flask import Flask, jsonify, make_response, Response, request
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers.modeling_utils import PreTrainedModel
+from transformers.tokenization_utils import PreTrainedTokenizer
 from waitress import serve
 
 
@@ -66,7 +68,7 @@ def truncate_at_stops(text: str, stop_strings: List[str]) -> Tuple[str, bool]:
 class LM:
     max_memory: Optional[MaxMemoryDict]
     offload_dir: Optional[str]
-    models: Dict[str, Tuple[AutoTokenizer, AutoModelForCausalLM]]
+    models: Dict[str, Tuple[PreTrainedTokenizer, PreTrainedModel]]
     main_device: str
 
     def __init__(self,
@@ -80,7 +82,7 @@ class LM:
         if preload_model is not None:
             self.get_tokenizer_and_model(preload_model)
 
-    def get_tokenizer_and_model(self, model_id: str) -> Tuple[AutoTokenizer, AutoModelForCausalLM]:
+    def get_tokenizer_and_model(self, model_id: str) -> Tuple[PreTrainedTokenizer, PreTrainedModel]:
         if model_id not in self.models:
             logging.info(f'Loading model: {model_id}')
             tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=False)
@@ -205,15 +207,15 @@ class LM:
 
             text = raw_completion.text
 
-    def _complete(self, text: str, tokenizer: AutoTokenizer, model: AutoModelForCausalLM,
+    def _complete(self, text: str, tokenizer: PreTrainedTokenizer, model: PreTrainedModel,
                   stop_strings: List[str], max_new_tokens: int,
                   do_sample: bool, top_p: float, temperature: float,
                   num_return_sequences: int) -> List[RawCompletion]:
         input_token_ids = tokenizer(text, return_tensors='pt')['input_ids']
-        output_token_ids = model.generate(
+        output_token_ids = cast(torch.Tensor, model.generate(
             input_token_ids.to(self.main_device), max_new_tokens=max_new_tokens, do_sample=do_sample, top_p=top_p,
             temperature=temperature, num_return_sequences=num_return_sequences,
-        )
+        ))
         completions = []
         for completion_num in range(output_token_ids.shape[0]):
             output_text = clean_output_text(tokenizer.decode(output_token_ids[completion_num].tolist()))
