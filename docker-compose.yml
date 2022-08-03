@@ -24,12 +24,19 @@ services:
       - http://backend-hf:8000/v1/completions
       - --port
       - '8000'
+      - --auth-token-file
+      - /opt/sandle/authorized-users.txt
     depends_on:
       - backend-hf
     environment:
       - SANDLE_AUTH_TOKEN
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}
     restart: unless-stopped
+    volumes:
+      - type: bind
+        source: ./authorized-users.txt
+        target: /opt/sandle/authorized-users.txt
+        read_only: true
 
   backend-hf:
     build:

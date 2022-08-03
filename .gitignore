@@ -1,5 +1,6 @@
 *.code-workspace
 fuzz-test-output
+authorized-users.txt
 
 # Editor temporary files
 *~
