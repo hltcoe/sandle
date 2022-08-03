@@ -24,6 +24,7 @@ services:
       - http://backend-hf:8000/v1/completions
       - --port
       - '8000'
+      - --auth-token-is-user
       - --auth-token-file
       - /opt/sandle/authorized-users.txt
     depends_on:
