@@ -1,7 +1,7 @@
 # Sandle
 
 ![Docker build status](https://github.com/hltcoe/sandle/actions/workflows/docker-build.yml/badge.svg)
-![Python test status](https://github.com/hltcoe/sandle/actions/workflows/test-python.yml/badge.svg)
+![Python test status](https://github.com/hltcoe/sandle/actions/workflows/python-test.yml/badge.svg)
 
 ![API specification validity](https://validator.swagger.io/validator/?url=https%3A%2F%2Fhltcoe.github.io%2Fsandle%2Fswagger.yaml)
 
