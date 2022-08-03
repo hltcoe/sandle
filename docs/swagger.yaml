@@ -2,6 +2,9 @@ openapi: 3.0.0
 info:
   description: >
     OpenAI-like API implemented by SANDLE, a large language modeling SANDbox for your Local Environment.
+  license:
+    name: BSD 2-Clause with views sentence
+    url: https://spdx.org/licenses/BSD-2-Clause-Views.html
   version: 0.0.1
   title: Sandle API
   contact:
