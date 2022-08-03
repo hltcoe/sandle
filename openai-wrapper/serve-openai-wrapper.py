@@ -258,6 +258,11 @@ def main():
                         help='Base-64--encoded authorization token (API key) to accept; '
                              'can be specified more than once to accept multiple tokens. '
                              'If none are specified, one will be generated on startup.')
+    parser.add_argument('-f', '--auth-token-file',
+                        help='File containing base-64--encoded authorization tokens (API keys) to accept, '
+                             'one per line.  Blank lines are ignored.  '
+                             'Auth token file is ignored if --auth-token is specified.  '
+                             'If no tokens are specified, one will be generated on startup.')
     parser.add_argument('-u', '--auth-token-is-user', action='store_true',
                         help='If true, use the authorization token as the API user. '
                              'This behavior may result in auth tokens showing up in logs.')
@@ -285,6 +290,10 @@ def main():
     if args.auth_token:
         auth_tokens = args.auth_token
         logging.info('Authorization tokens (API keys) read from command-line argument')
+    elif args.auth_token_file:
+        with open(args.auth_token_file) as f:
+            auth_tokens = [line.strip() for line in f if line]
+        logging.info('Authorization tokens (API keys) read from file')
     elif os.environ.get('SANDLE_AUTH_TOKEN'):
         auth_tokens = [os.environ['SANDLE_AUTH_TOKEN']]
         logging.info('Authorization token (API key) read from environment variable')
