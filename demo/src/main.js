@@ -16,5 +16,6 @@ Sentry.init({
   tracesSampleRate: 1.0,  // a rate less than 1.0 is recommended in production, yolo
   logErrors: true,
 });
+Sentry.setTag("component", "demo");
 
 app.mount("#app");

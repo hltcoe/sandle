@@ -447,6 +447,7 @@ def main():
         ],
         traces_sample_rate=1.0,  # a rate < 1.0 is recommended for production, yolo
     )
+    sentry_sdk.set_tag('component', 'backend-hf')
 
     if args.num_gpus == 1:
         logging.info(f'Using {args.num_gpus} GPU with up to {args.first_gpu_memory} model memory')

@@ -280,6 +280,7 @@ def main():
         ],
         traces_sample_rate=1.0,  # a rate < 1.0 is recommended for production, yolo
     )
+    sentry_sdk.set_tag('component', 'openai-wrapper')
 
     if args.auth_token:
         auth_tokens = args.auth_token
