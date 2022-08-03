@@ -6,6 +6,8 @@ from time import time
 from typing import Any, cast, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
 from uuid import uuid4
 
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
 import torch
 from flask import Flask, jsonify, make_response, Response, request
 from transformers import AutoTokenizer, AutoModelForCausalLM
@@ -361,6 +363,7 @@ def create_app(max_memory: Optional[MaxMemoryDict] = None,
             top_p = float(request_json.get('top_p', DEFAULT_TOP_P))
 
             user = request_json.get('user')
+            sentry_sdk.set_user({'id': user} if user else None)
 
             completion_log_text = 'completion' if num_return_sequences == 1 else 'completions'
             if stream:
@@ -437,6 +440,13 @@ def main():
 
     logging.basicConfig(format='[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s',
                         level=args.log_level)
+
+    sentry_sdk.init(
+        integrations=[
+            FlaskIntegration(),
+        ],
+        traces_sample_rate=1.0,  # a rate < 1.0 is recommended for production, yolo
+    )
 
     if args.num_gpus == 1:
         logging.info(f'Using {args.num_gpus} GPU with up to {args.first_gpu_memory} model memory')

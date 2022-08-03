@@ -110,7 +110,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
+#.env  # used for versioning
 .venv
 env/
 venv/

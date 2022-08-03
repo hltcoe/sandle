@@ -257,6 +257,7 @@
 import { nextTick } from "vue";
 import axios from "axios";
 import { SSE } from "sse.js";
+import * as Sentry from "@sentry/vue"
 
 const BASE_64_REGEX = /^[A-Za-z0-9+/=]*$/;
 
@@ -349,9 +350,7 @@ A:`,
     async getModels() {
       this.modelsAlert = null;
       try {
-        const url = `http://${import.meta.env.VITE_SANDLE_HOST}:${
-          import.meta.env.VITE_SANDLE_PORT
-        }/v1/models`;
+        const url = `${import.meta.env.VITE_SANDLE_URL_PREFIX}/v1/models`;
         const response = await axios.get(url, {
           headers: this.sandleHeaders,
         });
@@ -402,8 +401,8 @@ A:`,
             "Warning: The prompt ends with a space character which may cause performance issues.";
         }
         try {
-          const url = `http://${import.meta.env.VITE_SANDLE_HOST}:${
-            import.meta.env.VITE_SANDLE_PORT
+          const url = `${
+            import.meta.env.VITE_SANDLE_URL_PREFIX
           }/v1/completions`;
           const payload = JSON.stringify({
             model: this.modelId,
@@ -435,6 +434,7 @@ A:`,
   watch: {
     apiKey: {
       handler(newValue) {
+        Sentry.setUser(newValue ? { id: newValue } : null);
         this.populateModels();
       },
       immediate: true,

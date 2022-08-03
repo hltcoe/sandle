@@ -5,6 +5,8 @@ from base64 import b64encode
 from functools import wraps
 from typing import Any, cast, Dict, List, Optional
 
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
 from flask import Flask, jsonify, make_response, Response, request
 from flask_cors import CORS
 from flask_httpauth import HTTPBasicAuth, HTTPTokenAuth, MultiAuth
@@ -208,7 +210,9 @@ def create_app(accepted_auth_tokens: List[str], backend_completions_url: str,
         if model_data is not None:
             stream = request_json.get('stream', False)
             if auth_token_is_user:
-                request_json['user'] = multi_auth.current_user()
+                user = multi_auth.current_user()
+                sentry_sdk.set_user({'id': user} if user else None)
+                request_json['user'] = user
             try:
                 r = requests.post(backend_completions_url, json=request_json, stream=stream)
             except ConnectionError:
@@ -269,6 +273,13 @@ def main():
 
     logging.basicConfig(format='[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s',
                         level=args.log_level)
+
+    sentry_sdk.init(
+        integrations=[
+            FlaskIntegration(),
+        ],
+        traces_sample_rate=1.0,  # a rate < 1.0 is recommended for production, yolo
+    )
 
     if args.auth_token:
         auth_tokens = args.auth_token

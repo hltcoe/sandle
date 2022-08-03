@@ -2,7 +2,12 @@ version: '3'
 
 services:
   demo:
-    build: demo
+    build:
+      context: demo
+      args:
+        - VITE_SENTRY_DSN=${SENTRY_DSN}
+        - VITE_SENTRY_RELEASE=${APP_NAME}@${APP_VERSION}
+        # sentry environment is computed automatically
     ports:
       - "${SANDLE_DEMO_PORT:-80}:80"
     depends_on:
@@ -10,7 +15,11 @@ services:
     restart: unless-stopped
 
   openai-wrapper:
-    build: openai-wrapper
+    build:
+      context: openai-wrapper
+      args:
+        - SENTRY_DSN
+        - SENTRY_RELEASE=${APP_NAME}@${APP_VERSION}
     command:
       - http://backend-hf:8000/v1/completions
       - --port
@@ -19,10 +28,15 @@ services:
       - backend-hf
     environment:
       - SANDLE_AUTH_TOKEN
+      - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}
     restart: unless-stopped
 
   backend-hf:
-    build: backend-hf
+    build:
+      context: backend-hf
+      args:
+        - SENTRY_DSN
+        - SENTRY_RELEASE=${APP_NAME}@${APP_VERSION}
     command:
       - --port
       - '8000'
@@ -32,6 +46,8 @@ services:
       - '12GB'
       - --successive-gpu-memory
       - '24GB'
+    environment:
+      - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}
     restart: unless-stopped
     deploy:
       resources:

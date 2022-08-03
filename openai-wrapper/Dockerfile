@@ -28,3 +28,12 @@ COPY serve-openai-wrapper.py /opt/sandle/
 
 EXPOSE 8000
 ENTRYPOINT ["python", "serve-openai-wrapper.py"]
+
+
+# Sentry configuration (needed by Python at runtime)
+
+ARG SENTRY_DSN
+ARG SENTRY_RELEASE
+
+ENV SENTRY_DSN=${SENTRY_DSN}
+ENV SENTRY_RELEASE=${SENTRY_RELEASE}

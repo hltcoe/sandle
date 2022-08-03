@@ -1,5 +1,6 @@
 FROM nginx:1.22
 
+
 # Install build tools
 RUN apt-get update && \
     apt-get upgrade -y && \
@@ -8,6 +9,10 @@ RUN apt-get update && \
 
 # Configure server
 COPY nginx.default.conf /etc/nginx/conf.d/default.conf
+
+# Sentry build-time configuration
+ARG VITE_SENTRY_DSN
+ARG VITE_SENTRY_RELEASE
 
 # Build and deploy app
 COPY . /tmp/app-source

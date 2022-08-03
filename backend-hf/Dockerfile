@@ -35,3 +35,12 @@ COPY serve-backend-hf.py /opt/sandle/
 ENV LANG="C.UTF-8"
 EXPOSE 8000
 ENTRYPOINT ["/opt/anaconda3/bin/conda", "run", "--no-capture-output", "python", "serve-backend-hf.py"]
+
+
+# Sentry configuration (needed by Python at runtime)
+
+ARG SENTRY_DSN
+ARG SENTRY_RELEASE
+
+ENV SENTRY_DSN=${SENTRY_DSN}
+ENV SENTRY_RELEASE=${SENTRY_RELEASE}
