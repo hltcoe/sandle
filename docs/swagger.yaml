@@ -1,9 +1,9 @@
 openapi: 3.0.0
 info:
   description: >
-    A large language modeling SANDbox for your Local Environment.
+    OpenAI-like API implemented by SANDLE, a large language modeling SANDbox for your Local Environment.
   version: 0.0.1
-  title: Sandle
+  title: Sandle API
   contact:
     name: HLTCOE
 security:
