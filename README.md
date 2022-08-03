@@ -1,4 +1,4 @@
-# openaisle
+# Sandle
 Run a large language modeling SANDbox in your Local Environment ("SANDLE").
 
 ## Setup
@@ -78,7 +78,7 @@ key by passing the `--auth-token` argument on the command line.
 
 ### Example API calls
 
-The following command may be called against OpenAI's service or against a local OpenAisle service.
+The following command may be called against OpenAI's service or against a local Sandle service.
 For example, on OpenAI:  
 
 ```bash
@@ -91,10 +91,10 @@ curl "https://api.openai.com/v1/completions" \
 }'
 ```
 
-and on a local OpenAisle deployment:
+and on a local Sandle deployment:
 
 ```bash
-curl "http://YOUR_OPENAISLE_SERVER/v1/completions" \
+curl "http://YOUR_SANDLE_SERVER/v1/completions" \
   -H 'Content-Type: application/json' \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{
@@ -103,11 +103,11 @@ curl "http://YOUR_OPENAISLE_SERVER/v1/completions" \
 }'
 ```
 
-Note that OpenAisle only supports HTTP (not HTTPS) at this time.
+Note that Sandle only supports HTTP (not HTTPS) at this time.
 
 ### API Documentation
 
-See our [API documentation](https://hltcoe.github.io/openaisle) for a description of the subset of the OpenAI API implemented by OpenAisle.
+See our [API documentation](https://hltcoe.github.io/sandle) for a description of the subset of the OpenAI API implemented by Sandle.
 This documentation is generated using the Swagger UI on our API definition file at `docs/swagger.yaml`.
 
 ## Development
@@ -118,7 +118,7 @@ To set up a development environment for the demo web interface, install a recent
 npm install
 ```
 
-Then configure your development app by copying `.env.development` to `.env.development.local` and changing the values set in the file accordingly.  In particular, make sure you set `VUE_OPENAISLE_HOST` and `VUE_OPENAISLE_PORT` to the host and port of the API implementation you are using for development.  The demo service acts as a simple reverse proxy for the API implementation provided by the openai-wrapper service, so if you wish to run an API implementation yourself, you can run `docker-compose up` as usual, then use `localhost` and the demo service port bound to your host machine (by default, port 80) as your host and address.
+Then configure your development app by copying `.env.development` to `.env.development.local` and changing the values set in the file accordingly.  In particular, make sure you set `VUE_SANDLE_HOST` and `VUE_SANDLE_PORT` to the host and port of the API implementation you are using for development.  The demo service acts as a simple reverse proxy for the API implementation provided by the openai-wrapper service, so if you wish to run an API implementation yourself, you can run `docker-compose up` as usual, then use `localhost` and the demo service port bound to your host machine (by default, port 80) as your host and address.
 
 Once you've done that, you can start a development web server with:
 
@@ -147,7 +147,7 @@ docker-compose build openai-wrapper && docker-compose run --rm -p 54355:8000 --n
 Finally, do the following to build and run the stub backend on the default network created by Docker Compose:
 
 ```
-docker run --network openaisle_default --name backend-hf --rm `docker build -q backend-stub`
+docker run --network sandle_default --name backend-hf --rm `docker build -q backend-stub`
 ```
 
 ## Testing
@@ -156,11 +156,11 @@ docker run --network openaisle_default --name backend-hf --rm `docker build -q b
 
 To perform fuzz testing using the Microsoft RESTler tool in Docker:
 
-First, bring up the openaisle system using the test authentication
+First, bring up the Sandle system using the test authentication
 token:
 
 ```
-OPENAISLE_AUTH_TOKEN=dGVzdA== docker-compose up --build
+SANDLE_AUTH_TOKEN=dGVzdA== docker-compose up --build
 ```
 
 Then, run `run-fuzz-test-docker.bash` to build the `restler` Docker
@@ -185,7 +185,7 @@ file is greater than zero, the test procedure will terminate.
 Example runtime test using the Apache Bench tool (installed by default on OS X):
 
 ```
-ab -n 10 -c 1 -s 60 -p qa.txt -T application/json -A :YOUR_API_KEY -m POST http://YOUR_OPENAISLE_SERVER/v1/completions
+ab -n 10 -c 1 -s 60 -p qa.txt -T application/json -A :YOUR_API_KEY -m POST http://YOUR_SANDLE_SERVER/v1/completions
 ```
 
 where `qa.txt` is a text file in the current directory that contains the prompt JSON.  Example file contents:

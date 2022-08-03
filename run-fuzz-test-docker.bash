@@ -14,12 +14,12 @@ fi
 
 mkdir -p fuzz-test-output
 docker run \
-    --mount type=bind,src=$HOME/openaisle/docs/swagger.yaml,dst=/swagger.yaml,readonly \
+    --mount type=bind,src=$HOME/sandle/docs/swagger.yaml,dst=/swagger.yaml,readonly \
     --mount type=bind,src=$PWD/run-fuzz-test.sh,dst=/run-fuzz-test.sh,readonly \
     --mount type=bind,src=$PWD/generate-fuzz-test-token.py,dst=/generate-fuzz-test-token.py,readonly \
     --mount type=bind,src=$PWD/check-fuzz-test-output.py,dst=/check-fuzz-test-output.py,readonly \
     --mount type=bind,src=$PWD/fuzz-test-output,dst=/output \
-    --network openaisle_default \
+    --network sandle_default \
     -it \
     restler \
     sh /run-fuzz-test.sh

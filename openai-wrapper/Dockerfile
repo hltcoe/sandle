@@ -11,8 +11,8 @@ RUN apt-get update && \
 
 # 2. Install Python dependencies
 
-WORKDIR /opt/openaisle
-COPY requirements.txt /opt/openaisle/
+WORKDIR /opt/sandle
+COPY requirements.txt /opt/sandle/
 RUN pip install -r requirements.txt
 
 
@@ -21,7 +21,7 @@ RUN pip install -r requirements.txt
 
 # 4. Add application code
 
-COPY serve-openai-wrapper.py /opt/openaisle/
+COPY serve-openai-wrapper.py /opt/sandle/
 
 
 # 5. Perform remaining configuration

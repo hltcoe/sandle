@@ -1,9 +1,9 @@
 openapi: 3.0.0
 info:
   description: >
-    A partial clone of the OpenAI API for OPT on HuggingFace in your local environment.
+    A large language modeling SANDbox for your Local Environment.
   version: 0.0.1
-  title: OpenAisle
+  title: Sandle
   contact:
     name: HLTCOE
 security:
@@ -254,5 +254,5 @@ components:
       type: http
       scheme: bearer
 externalDocs:
-  description: OpenAisle repository on GitHub
-  url: http://github.com/hltcoe/openaisle
+  description: Sandle repository on GitHub
+  url: http://github.com/hltcoe/sandle

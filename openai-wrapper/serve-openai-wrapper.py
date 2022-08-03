@@ -273,8 +273,8 @@ def main():
     if args.auth_token:
         auth_tokens = args.auth_token
         logging.info('Authorization tokens (API keys) read from command-line argument')
-    elif os.environ.get('OPENAISLE_AUTH_TOKEN'):
-        auth_tokens = [os.environ['OPENAISLE_AUTH_TOKEN']]
+    elif os.environ.get('SANDLE_AUTH_TOKEN'):
+        auth_tokens = [os.environ['SANDLE_AUTH_TOKEN']]
         logging.info('Authorization token (API key) read from environment variable')
     else:
         auth_tokens = [generate_auth_token()]
