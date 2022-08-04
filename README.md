@@ -2,6 +2,7 @@
 
 [![Docker build status](https://github.com/hltcoe/sandle/actions/workflows/docker-build.yml/badge.svg)](https://github.com/hltcoe/sandle/actions/workflows/docker-build.yml)
 [![Python test status](https://github.com/hltcoe/sandle/actions/workflows/python-test.yml/badge.svg)](https://github.com/hltcoe/sandle/actions/workflows/python-test.yml)
+[![License](https://img.shields.io/badge/License-BSD-blue)](https://github.com/hltcoe/sandle/blob/main/LICENSE)
 
 [![API specification validity](https://validator.swagger.io/validator/?url=https%3A%2F%2Fhltcoe.github.io%2Fsandle%2Fswagger.yaml)](https://hltcoe.github.io/sandle)
 
