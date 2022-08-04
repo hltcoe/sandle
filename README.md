@@ -22,7 +22,9 @@ These services can be run together on your local machine using [Docker Compose](
 
 A web interface is provided to illustrate the API functionality and facilitate exploration of the models:
 
-<img width="888" alt="Screen Shot of demo web interface" src="https://user-images.githubusercontent.com/457238/178364339-6d62e7b7-9687-46ed-9312-9e5cb1446705.png">
+<p align="center">
+<img width="640" alt="Screen shot of web demo" src="https://user-images.githubusercontent.com/457238/182888618-96166a7e-eca6-4303-bd5b-20e28b22beb9.png">
+</p>
 
 To build and run this demo using Docker Compose, do:
 
