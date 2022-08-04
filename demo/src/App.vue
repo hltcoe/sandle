@@ -336,30 +336,32 @@ A:`,
       const previousModelId = this.modelId;
       this.models = null;
       this.modelId = null;
-      this.models = await this.getModels();
-      if (this.models && this.models.length > 0) {
-        if (this.models.find((m) => m.id === previousModelId)) {
-          this.modelId = previousModelId;
+      this.modelsAlert = null;
+      try {
+        this.models = await this.getModels();
+        if (this.models && this.models.length > 0) {
+          if (this.models.find((m) => m.id === previousModelId)) {
+            this.modelId = previousModelId;
+          } else {
+            this.modelId = this.models[0].id;
+          }
         } else {
-          this.modelId = this.models[0].id;
+          this.modelId = previousModelId;
         }
-      } else {
+      } catch (e) {
         this.modelId = previousModelId;
+        this.modelsAlert = formatAxiosError(e);
+        if (! (e.response && [401, 403].includes(e.response.status))) {
+          throw e;
+        }
       }
     },
     async getModels() {
-      this.modelsAlert = null;
-      try {
-        const url = `${import.meta.env.VITE_SANDLE_URL_PREFIX}/v1/models`;
-        const response = await axios.get(url, {
-          headers: this.sandleHeaders,
-        });
-        return response.data.data;
-      } catch (e) {
-        console.log(e);
-        this.modelsAlert = formatAxiosError(e);
-        return null;
-      }
+      const url = `${import.meta.env.VITE_SANDLE_URL_PREFIX}/v1/models`;
+      const response = await axios.get(url, {
+        headers: this.sandleHeaders,
+      });
+      return response.data.data;
     },
     handleCompletionsMessage(event) {
       if (event.data !== "[DONE]") {
@@ -381,9 +383,10 @@ A:`,
       );
     },
     handleCompletionsError(event) {
-      console.log(event);
-      this.completionsError = `Error streaming completions: The backend may be busy or down`;
+      const message = `Error streaming completions: The backend may be busy or down`;
+      this.completionsError = message;
       this.runningCompletions = false;
+      throw new Error(message);
     },
     async redoPreviousCompletions() {
       if (this.previousCompletionsPrompt !== null) {
@@ -424,9 +427,9 @@ A:`,
           source.addEventListener("abort", this.handleCompletionsError);
           source.stream();
         } catch (e) {
-          console.log(e);
           this.completionsError = `Error setting up completions stream: ${e}`;
           this.runningCompletions = false;
+          throw e;
         }
       }
     },

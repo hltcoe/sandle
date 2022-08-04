@@ -216,17 +216,13 @@ def create_app(accepted_auth_tokens: List[str], backend_completions_url: str,
             try:
                 r = requests.post(backend_completions_url, json=request_json, stream=stream)
             except ConnectionError:
-                return make_error_response(
-                    502,
-                    'Error connecting to backend service.',
-                    'internal_server_error',
-                )
+                message = 'Error connecting to backend service.'
+                logging.exception(message)
+                return make_error_response(502, message, 'internal_server_error')
             except Timeout:
-                return make_error_response(
-                    504,
-                    'Timeout connecting to backend service.',
-                    'internal_server_error',
-                )
+                message = 'Timeout connecting to backend service.'
+                logging.exception(message)
+                return make_error_response(504, message, 'internal_server_error')
             headers = {}
             for passthru_header in ('X-Accel-Buffering', 'Content-Type'):
                 if passthru_header in r.headers:

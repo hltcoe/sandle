@@ -1,6 +1,7 @@
 import { createApp } from "vue";
 import * as Sentry from "@sentry/vue";
 import { BrowserTracing } from "@sentry/tracing";
+import { CaptureConsole } from '@sentry/integrations';
 import App from './App.vue'
 
 const app = createApp(App);
@@ -12,6 +13,7 @@ Sentry.init({
   environment: import.meta.env.MODE,
   integrations: [
     new BrowserTracing({}),
+    new CaptureConsole({levels: ['error']}),
   ],
   tracesSampleRate: 1.0,  // a rate less than 1.0 is recommended in production, yolo
   logErrors: true,

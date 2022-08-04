@@ -7,6 +7,7 @@
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore"
   },
   "dependencies": {
+    "@sentry/integrations": "^7.8.1",
     "@sentry/tracing": "^7.8.1",
     "@sentry/vue": "^7.8.1",
     "axios": "^0.27.2",
