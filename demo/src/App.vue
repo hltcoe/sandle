@@ -103,8 +103,8 @@
           <div class="m-3" v-if="models">
             <label class="form-label" for="model-input"> Model </label>
             <select class="form-select" id="model-input" v-model="modelId">
-              <option v-for="model in models" :key="model.id">
-                {{ model.id }}
+              <option v-for="model in models" :value="model.id" :key="model.id">
+                {{ model.family }} {{ model.size }}
               </option>
             </select>
           </div>
