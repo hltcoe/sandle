@@ -5,7 +5,7 @@ info:
   license:
     name: BSD 2-Clause with views sentence
     url: https://spdx.org/licenses/BSD-2-Clause-Views.html
-  version: 0.0.1
+  version: 0.0.2
   title: Sandle API
   contact:
     name: HLTCOE
@@ -138,8 +138,8 @@ components:
           default: 16
         temperature:
           description: >-
-            Sampling temperature.  Set to 1 to disable;
-            see https://huggingface.co/blog/how-to-generate#top-p-nucleus-sampling
+            Sampling temperature.
+            See https://huggingface.co/blog/how-to-generate#top-p-nucleus-sampling
             for more information
           type: number
           minimum: 0

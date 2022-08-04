@@ -177,19 +177,15 @@
                   ><i class="bi bi-question-circle text-muted"></i
                 ></a>
               </span>
-              <span class="text-muted mx-2"
-                >{{ temperature }}
-                {{ temperature === 1 ? " (disabled)" : "" }}</span
-              >
+              <span class="text-muted mx-2">{{ temperature }}</span>
             </label>
             <input
               type="range"
               class="form-range"
               id="temperature-input"
-              min="0.01"
+              min="0"
               max="1"
               step="0.01"
-              :disabled="useGreedyDecoding"
               v-model.number="temperature"
             />
           </div>
@@ -208,10 +204,7 @@
                   ><i class="bi bi-question-circle text-muted"></i
                 ></a>
               </span>
-              <span class="text-muted mx-2"
-                >{{ topP }}
-                {{ topP === 0 || topP === 1 ? " (disabled)" : "" }}</span
-              >
+              <span class="text-muted mx-2">{{ topP }}</span>
             </label>
             <input
               type="range"
@@ -322,6 +315,7 @@ import axios from "axios";
 import { SSE } from "sse.js";
 import * as Sentry from "@sentry/vue";
 
+const DEFAULT_TEMPERATURE = 0.7;
 const BASE_64_REGEX = /^[A-Za-z0-9+/=]*$/;
 
 function formatAxiosError(e) {
@@ -346,7 +340,8 @@ export default {
       modelsAlert: null,
       stopJSONString: "\\n",
       maxNewTokens: 20,
-      temperature: 1,
+      temperature: DEFAULT_TEMPERATURE,
+      previousTemperature: null,
       topP: 1,
       prompt: `I am a highly intelligent question answering bot. If you ask me a question that is rooted in truth, I will give you the answer. If you ask me a question that is nonsense, trickery, or has no clear answer, I will respond with "Unknown".
 
@@ -479,9 +474,10 @@ A:`,
           const payload = JSON.stringify({
             model: this.modelId,
             prompt: this.prompt,
-            greedy_decoding: this.useGreedyDecoding,
+            greedy_decoding:
+              this.temperature > 0 ? this.useGreedyDecoding : true,
             max_tokens: this.maxNewTokens,
-            temperature: this.temperature,
+            temperature: this.temperature > 0 ? this.temperature : 1,
             top_p: this.topP,
             stop: this.stop ? this.stop : null,
             stream: true,
@@ -516,6 +512,25 @@ A:`,
       handler(newValue) {
         Sentry.setUser(newValue ? { id: newValue } : null);
         this.populateModels();
+      },
+      immediate: true,
+    },
+    temperature: {
+      handler(newValue) {
+        this.useGreedyDecoding = newValue === 0;
+      },
+      immediate: true,
+    },
+    useGreedyDecoding: {
+      handler(newValue) {
+        if (newValue) {
+          this.previousTemperature = this.temperature;
+          this.temperature = 0;
+        } else {
+          this.temperature = this.previousTemperature
+            ? this.previousTemperature
+            : DEFAULT_TEMPERATURE;
+        }
       },
       immediate: true,
     },
