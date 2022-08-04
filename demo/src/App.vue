@@ -76,7 +76,9 @@
         </div>
         <div class="col-4">
           <div class="m-3">
-            <label class="form-label" for="api-key-input"> API key or password </label>
+            <label class="form-label" for="api-key-input">
+              API key or password
+            </label>
             <div class="d-flex">
               <input
                 type="text"
@@ -109,6 +111,13 @@
           <div class="m-3">
             <label class="form-label" for="stop-json-input">
               Stop sequence
+              <a
+                @click.prevent
+                href="#"
+                data-bs-toggle="tooltip"
+                title="Truncate text generated after (and including) this string.  This string is JSON-encoded, so newline is \n, tab is \t, etc."
+                ><i class="bi bi-question-circle text-muted"></i
+              ></a>
             </label>
             <input
               type="text"
@@ -120,6 +129,13 @@
           <div class="m-3">
             <label class="form-label" for="max-new-tokens-input">
               Max. new tokens
+              <a
+                @click.prevent
+                href="#"
+                data-bs-toggle="tooltip"
+                title="Maximum number of new tokens to generate."
+                ><i class="bi bi-question-circle text-muted"></i
+              ></a>
             </label>
             <input
               type="number"
@@ -131,17 +147,36 @@
           <div class="m-3">
             <input
               type="checkbox"
-              class="form-check-input me-1"
+              class="form-check-input me-2"
               id="use-greedy-decoding-input"
               v-model="useGreedyDecoding"
             />
             <label class="form-check-label" for="use-greedy-decoding-input">
               Use greedy decoding
+              <a
+                @click.prevent
+                href="#"
+                data-bs-toggle="tooltip"
+                title="If unchecked, use random sampling."
+                ><i class="bi bi-question-circle text-muted"></i
+              ></a>
             </label>
           </div>
           <div class="m-3">
-            <label class="form-label" for="temperature-input">
-              Temperature
+            <label
+              class="form-label d-flex justify-content-between"
+              for="temperature-input"
+            >
+              <span>
+                Temperature
+                <a
+                  @click.prevent
+                  href="#"
+                  data-bs-toggle="tooltip"
+                  title="Softmax temperature to sample at (higher is more random)."
+                  ><i class="bi bi-question-circle text-muted"></i
+                ></a>
+              </span>
               <span class="text-muted mx-2"
                 >{{ temperature }}
                 {{ temperature === 1 ? " (disabled)" : "" }}</span
@@ -159,8 +194,20 @@
             />
           </div>
           <div class="m-3">
-            <label class="form-label" for="top-p-input">
-              Top-p
+            <label
+              class="form-label d-flex justify-content-between"
+              for="top-p-input"
+            >
+              <span>
+                Top-p
+                <a
+                  @click.prevent
+                  href="#"
+                  data-bs-toggle="tooltip"
+                  title="Probability mass to sample from (higher is more random)."
+                  ><i class="bi bi-question-circle text-muted"></i
+                ></a>
+              </span>
               <span class="text-muted mx-2"
                 >{{ topP }}
                 {{ topP === 0 || topP === 1 ? " (disabled)" : "" }}</span
@@ -180,7 +227,7 @@
           <div class="m-3">
             <input
               type="checkbox"
-              class="form-check-input me-1"
+              class="form-check-input me-2"
               id="strip-trailing-whitespace-input"
               v-model="stripTrailingWhitespace"
             />
@@ -189,11 +236,25 @@
               for="strip-trailing-whitespace-input"
             >
               Strip trailing whitespace
+              <a
+                @click.prevent
+                href="#"
+                data-bs-toggle="tooltip"
+                title="If checked, strip trailing whitespace from generated text."
+                ><i class="bi bi-question-circle text-muted"></i
+              ></a>
             </label>
           </div>
           <div class="m-3">
             <label class="form-label" for="completion-suffix-json-input">
               Completion suffix
+              <a
+                @click.prevent
+                href="#"
+                data-bs-toggle="tooltip"
+                title="Append this string to the end of generated text.  This string is JSON-encoded, so newline is \n, tab is \t, etc."
+                ><i class="bi bi-question-circle text-muted"></i
+              ></a>
             </label>
             <input
               type="text"
@@ -254,15 +315,22 @@
 </template>
 
 <script>
+import "@popperjs/core";
+import { Tooltip } from "bootstrap";
 import { nextTick } from "vue";
 import axios from "axios";
 import { SSE } from "sse.js";
-import * as Sentry from "@sentry/vue"
+import * as Sentry from "@sentry/vue";
 
 const BASE_64_REGEX = /^[A-Za-z0-9+/=]*$/;
 
 function formatAxiosError(e) {
-  if (e.response && e.response.data && e.response.data.error && e.response.data.error.message) {
+  if (
+    e.response &&
+    e.response.data &&
+    e.response.data.error &&
+    e.response.data.error.message
+  ) {
     return e.response.data.error.message;
   } else {
     return e.message;
@@ -312,6 +380,7 @@ A:`,
       stripTrailingWhitespace: true,
       useGreedyDecoding: false,
       completionSuffixJSONString: "\\n\\nQ:",
+      tooltips: null,
     };
   },
   computed: {
@@ -351,7 +420,7 @@ A:`,
       } catch (e) {
         this.modelId = previousModelId;
         this.modelsAlert = formatAxiosError(e);
-        if (! (e.response && [401, 403].includes(e.response.status))) {
+        if (!(e.response && [401, 403].includes(e.response.status))) {
           throw e;
         }
       }
@@ -433,6 +502,14 @@ A:`,
         }
       }
     },
+  },
+  mounted() {
+    const tooltipTriggers = [].slice.call(
+      document.querySelectorAll('[data-bs-toggle="tooltip"]')
+    );
+    this.tooltips = tooltipTriggers.map(function (tooltipTriggerEl) {
+      return new Tooltip(tooltipTriggerEl);
+    });
   },
   watch: {
     apiKey: {

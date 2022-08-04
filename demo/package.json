@@ -7,6 +7,7 @@
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore"
   },
   "dependencies": {
+    "@popperjs/core": "^2.11.5",
     "@sentry/integrations": "^7.8.1",
     "@sentry/tracing": "^7.8.1",
     "@sentry/vue": "^7.8.1",
