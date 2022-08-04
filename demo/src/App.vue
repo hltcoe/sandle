@@ -2,7 +2,7 @@
 <template>
   <div class="container my-5">
     <header class="my-4">
-      <h1>SANDLE Demo &#x1F495;</h1>
+      <h1>SANDLE Demo &#x2B50;</h1>
       <h6 class="text-muted">
         This web app uses a subset of the OpenAI API to communicate with a local
         deployment of large language models in HuggingFace.
