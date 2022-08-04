@@ -1,4 +1,5 @@
 import json
+import gc
 import logging
 import os
 from itertools import chain, zip_longest
@@ -86,6 +87,12 @@ class LM:
 
     def get_tokenizer_and_model(self, model_id: str) -> Tuple[PreTrainedTokenizer, PreTrainedModel]:
         if model_id not in self.models:
+            # Deallocate any existing models
+            self.models.clear()
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
             logging.info(f'Loading model: {model_id}')
             tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=False)
             if self.offload_dir is not None:
