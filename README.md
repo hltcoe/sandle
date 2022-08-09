@@ -34,7 +34,14 @@ v1.28.0 or later.  To use Docker Compose
 on BRTX, [install a new, standalone version of docker
 compose](https://docs.docker.com/compose/install/compose-plugin/#install-the-plugin-manually)
 to your home directory and run that version instead of the
-system-installed version.
+system-installed version.  For example, to download Docker Compose
+standalone version 2.7.0:
+
+```bash
+curl -SL https://github.com/docker/compose/releases/download/v2.7.0/docker-compose-linux-x86_64 -o docker-compose
+chmod 755 docker-compose
+./docker-compose --version
+```
 
 Additionally, on BRTX, the server will be bound to the local host using IPv4 but `localhost`
 will resolve to the local host using IPv6.  When connecting to the API, specify `127.0.0.1` or
