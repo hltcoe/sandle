@@ -469,7 +469,14 @@ def main():
         for i in range(args.num_gpus)
     )
 
-    app = create_app(max_memory, args.offload_dir, args.preload_model)
+    if args.preload_model:
+        preload_model = args.preload_model
+    elif os.environ.get('SANDLE_SINGLE_MODEL'):
+        preload_model = os.environ['SANDLE_SINGLE_MODEL']
+    else:
+        preload_model = None
+
+    app = create_app(max_memory, args.offload_dir, preload_model)
 
     serve(app, host=args.host, port=args.port, threads=1)
 
