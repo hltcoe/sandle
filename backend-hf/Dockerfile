@@ -28,14 +28,15 @@ RUN /opt/anaconda3/bin/conda install -y pip && \
 
 # 4. Add application code
 
-COPY serve-backend-hf.py /opt/sandle/
+COPY run.py /opt/sandle/
 
 
 # 5. Perform remaining configuration
 
 ENV LANG="C.UTF-8"
 EXPOSE 8000
-ENTRYPOINT ["/opt/anaconda3/bin/conda", "run", "--no-capture-output", "python", "serve-backend-hf.py"]
+ENTRYPOINT ["/opt/anaconda3/bin/conda", "run", "--no-capture-output", "accelerate", "launch"]
+#CMD ["--multi_gpu", "--machine_rank", "--num_machines", "2", "--main_process_ip", "--main_process_port", "run.py"]
 
 
 # Sentry configuration (needed by Python at runtime)

@@ -1,5 +1,6 @@
-accelerate
+accelerate>=0.12.0
 flask
 sentry-sdk[flask]
-transformers>=4.20.1
+# Waiting for this commit to get released to go back to pypi
+git+https://github.com/huggingface/transformers.git@e0bc4c73e881b1a47192b1c01d306607bd7d7b2a
 waitress
