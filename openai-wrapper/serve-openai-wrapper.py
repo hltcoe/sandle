@@ -301,7 +301,12 @@ def main():
 
     if args.allow_model:
         allowed_models_set = set(args.allow_model)
+    elif os.environ.get('SANDLE_SINGLE_MODEL'):
+        allowed_models_set = {os.environ['SANDLE_SINGLE_MODEL']}
+    else:
+        allowed_models_set = set()
 
+    if allowed_models_set:
         logging.info(f'Allowing only the specified model(s) to be used: {allowed_models_set}')
         models_to_remove = [m for m in MODELS if m['id'] not in allowed_models_set]
         for model_to_remove in models_to_remove:
