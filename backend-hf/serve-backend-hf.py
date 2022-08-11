@@ -71,15 +71,19 @@ def truncate_at_stops(text: str, stop_strings: List[str]) -> Tuple[str, bool]:
 class LM:
     max_memory: Optional[MaxMemoryDict]
     offload_dir: Optional[str]
+    load_in_8bit: bool
     models: Dict[str, Tuple[PreTrainedTokenizer, PreTrainedModel]]
     main_device: str
 
     def __init__(self,
                  max_memory: Optional[MaxMemoryDict] = None,
                  offload_dir: Optional[str] = None,
-                 preload_model: Optional[str] = None):
+                 preload_model: Optional[str] = None,
+                 load_in_8bit: bool = False):
         self.max_memory = max_memory
         self.offload_dir = offload_dir
+        self.load_in_8bit = load_in_8bit
+
         self.models = {}
         self.main_device = 'cuda' if torch.cuda.is_available() else 'cpu'
         if preload_model is not None:
@@ -108,6 +112,7 @@ class LM:
             model = AutoModelForCausalLM.from_pretrained(
                 model_id,
                 device_map='auto',
+                load_in_8bit=self.load_in_8bit,
                 max_memory=self.max_memory,
                 torch_dtype=torch.float16,
                 offload_folder=self.offload_dir,
@@ -281,8 +286,14 @@ def make_error_response(status: int, message: str, error_type: str,
 
 def create_app(max_memory: Optional[MaxMemoryDict] = None,
                offload_dir: Optional[str] = None,
-               preload_model: Optional[str] = None) -> Flask:
-    lm = LM(max_memory, offload_dir, preload_model)
+               preload_model: Optional[str] = None,
+               load_in_8bit: bool = False) -> Flask:
+    lm = LM(
+        max_memory=max_memory,
+        offload_dir=offload_dir,
+        preload_model=preload_model,
+        load_in_8bit=load_in_8bit,
+    )
 
     app = Flask(__name__)
 
@@ -440,6 +451,8 @@ def main():
                         help='Directory where model will be offloaded if available memory is exceeded')
     parser.add_argument('-m', '--preload-model',
                         help='Huggingface repository of model to preload (example: facebook/opt-2.7b)')
+    parser.add_argument('-8', '--load-in-8bit', action='store_true',
+                        help='Load model in 8 bit using the bits-and-bytes algorithm')
     parser.add_argument('-l', '--log-level',
                         choices=('CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'), default='INFO',
                         help='Logging verbosity level threshold (to stderr)')
@@ -476,7 +489,12 @@ def main():
     else:
         preload_model = None
 
-    app = create_app(max_memory, args.offload_dir, preload_model)
+    app = create_app(
+        max_memory=max_memory,
+        offload_dir=args.offload_dir,
+        preload_model=preload_model,
+        load_in_8bit=args.load_in_8bit,
+    )
 
     serve(app, host=args.host, port=args.port, threads=1)
 
