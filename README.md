@@ -17,7 +17,13 @@ and an OpenAI-like REST API:
 
 ## Setup
 
-To build and run SANDLE with default settings using Docker Compose, do:
+To run Sandle for the first time, you must configure the API keys that the application will
+accept.  To do so, create a file called `authorized-users.txt` in this directory and add the
+accepted API keys to it, one key per line.  API keys must use the base 64 alphabet.  If
+you are not exposing your Sandle instance to the internet, you may wish to use a simple API
+key like "test" or your system username.
+
+Then, to build and run SANDLE using Docker Compose, do:
 
 ```bash
 docker-compose up --build
@@ -68,9 +74,17 @@ services:
 
 ### Authentication
 
-By default, the openai-wrapper service will generate a random API key every time it starts up.
-This API key will be logged to the console.  You can also specify your own (base-64–encoded) API
-key by passing the `--auth-token` argument on the command line.
+API keys are listed in a user-created file in the current directory, `authorized-users.txt`,
+one key per line.  API keys should use the base 64 alphabet.
+
+A single accepted API key can also be specified via command line argument or environment
+variable.  For more information, run the following:
+
+```
+docker-compose run --no-deps openai-wrapper --help
+```
+
+The current authentication configuration is specified in `docker-compose.yml`.
 
 [As in the OpenAI API](https://beta.openai.com/docs/api-reference/authentication), the API key can be used either as a "Bearer" authentication token or as a basic authentication password (with the user being the empty string).
 
