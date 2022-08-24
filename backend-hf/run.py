@@ -11,7 +11,7 @@ def main():
     logging.basicConfig(format='[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s',
                         level='INFO')
 
-    model_id = 'facebook/opt-6.7b'
+    model_id = 'bigscience/bloom'
     prompt = 'Hello,'
 
     main_device = 'cuda' if torch.cuda.is_available() else 'cpu'
