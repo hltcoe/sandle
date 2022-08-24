@@ -65,7 +65,6 @@ services:
           devices:
             - capabilities: [gpu]
     volumes:
-      - huggingface-models:/root/.cache/huggingface
-
-volumes:
-  huggingface-models:
+      - type: bind
+        source: /brtx/606-nvme1/cmay/huggingface
+        target: /root/.cache/huggingface
