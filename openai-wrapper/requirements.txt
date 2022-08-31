@@ -1,6 +1,7 @@
 flask
 flask-cors
 flask-httpauth
+huggingface_hub
 requests
 sentry-sdk[flask]
 waitress
