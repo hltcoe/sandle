@@ -27,6 +27,8 @@ services:
       - --auth-token-is-user
       - --auth-token-file
       - /opt/sandle/authorized-users.txt
+      - -l
+      - DEBUG
     depends_on:
       - backend-hf
     environment:
