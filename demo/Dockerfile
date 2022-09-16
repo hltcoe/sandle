@@ -17,6 +17,7 @@ ARG VITE_SENTRY_RELEASE
 # Build and deploy app
 COPY . /tmp/app-source
 RUN cd /tmp/app-source && \
+    rm -rf dist && \
     npm ci && \
     npm run build && \
     mv dist/* /usr/share/nginx/html/ && \
