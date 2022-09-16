@@ -27,10 +27,13 @@ services:
       - --auth-token-is-user
       - --auth-token-file
       - /opt/sandle/authorized-users.txt
+      - -l
+      - DEBUG
     depends_on:
       - backend-hf
     environment:
       - SANDLE_AUTH_TOKEN
+      - SANDLE_SINGLE_MODEL
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}
     restart: unless-stopped
     volumes:
@@ -55,6 +58,7 @@ services:
       - --successive-gpu-memory
       - '24GB'
     environment:
+      - SANDLE_SINGLE_MODEL
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}
     restart: unless-stopped
     deploy:

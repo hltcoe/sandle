@@ -317,6 +317,30 @@ import * as Sentry from "@sentry/vue";
 
 const DEFAULT_TEMPERATURE = 0.7;
 const BASE_64_REGEX = /^[A-Za-z0-9+/=]*$/;
+const DEFAULT_MODELS = [
+    'facebook/opt-125m',
+    'facebook/opt-350m',
+    'facebook/opt-1.3b',
+    'bigscience/bloom-350m',
+    'bigscience/bloom-760m',
+    'bigscience/bloom-1b3',
+];
+const KNOWN_MODEL_DETAILS = new Map()
+KNOWN_MODEL_DETAILS.set('facebook/opt-125m', {family: 'OPT', size: '125m'})
+KNOWN_MODEL_DETAILS.set('facebook/opt-350m', {family: 'OPT', size: '350m'})
+KNOWN_MODEL_DETAILS.set('facebook/opt-1.3b', {family: 'OPT', size: '1.3b'})
+KNOWN_MODEL_DETAILS.set('facebook/opt-2.7b', {family: 'OPT', size: '2.7b'})
+KNOWN_MODEL_DETAILS.set('facebook/opt-6.7b', {family: 'OPT', size: '6.7b'})
+KNOWN_MODEL_DETAILS.set('facebook/opt-13b', {family: 'OPT', size: '13b'})
+KNOWN_MODEL_DETAILS.set('facebook/opt-30b', {family: 'OPT', size: '30b'})
+KNOWN_MODEL_DETAILS.set('facebook/opt-60b', {family: 'OPT', size: '60b'})
+KNOWN_MODEL_DETAILS.set('bigscience/bloom-350m', {family: 'Bloom', size: '350m'})
+KNOWN_MODEL_DETAILS.set('bigscience/bloom-760m', {family: 'Bloom', size: '760m'})
+KNOWN_MODEL_DETAILS.set('bigscience/bloom-1b3', {family: 'Bloom', size: '1.3b'})
+KNOWN_MODEL_DETAILS.set('bigscience/bloom-2b5', {family: 'Bloom', size: '2.5b'})
+KNOWN_MODEL_DETAILS.set('bigscience/bloom-6b3', {family: 'Bloom', size: '6.3b'})
+KNOWN_MODEL_DETAILS.set('bigscience/bloom', {family: 'Bloom', size: '176b'})
+
 
 function formatAxiosError(e) {
   if (
@@ -403,15 +427,24 @@ A:`,
       this.modelsAlert = null;
       try {
         this.models = await this.getModels();
-        if (this.models && this.models.length > 0) {
-          if (this.models.find((m) => m.id === previousModelId)) {
-            this.modelId = previousModelId;
-          } else {
-            this.modelId = this.models[0].id;
-          }
-        } else {
-          this.modelId = previousModelId;
+        if (!this.models || this.models.length === 0) {
+          this.models = DEFAULT_MODELS.map((modelId) => ({id: modelId}));
         }
+        if (this.models.find((m) => m.id === previousModelId)) {
+          this.modelId = previousModelId;
+        } else {
+          this.modelId = this.models[0].id;
+        }
+        this.models.forEach(function(model) {
+          if (KNOWN_MODEL_DETAILS.has(model.id)) {
+            const modelDetails = KNOWN_MODEL_DETAILS.get(model.id);
+            model.family = modelDetails.family;
+            model.size = modelDetails.size;
+          } else {
+            model.family = model.id;
+            model.size = '';
+          }
+        })
       } catch (e) {
         this.modelId = previousModelId;
         this.modelsAlert = formatAxiosError(e);

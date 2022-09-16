@@ -4,29 +4,26 @@
 [![Python test status](https://github.com/hltcoe/sandle/actions/workflows/python-test.yml/badge.svg)](https://github.com/hltcoe/sandle/actions/workflows/python-test.yml)
 [![License](https://img.shields.io/badge/License-BSD-blue)](https://github.com/hltcoe/sandle/blob/main/LICENSE)
 
-[![API specification validity](https://validator.swagger.io/validator/?url=https%3A%2F%2Fhltcoe.github.io%2Fsandle%2Fswagger.yaml)](https://hltcoe.github.io/sandle)
+Run a large language modeling SANDbox in your Local Environment (SANDLE).
 
-Run a large language modeling SANDbox in your Local Environment ("SANDLE").
+This repository provides a Docker Compose system for hosting and interacting with large language models on your own hardware.  It includes a web sandbox:
+
+![Screen Shot 2022-08-09 at 1 29 33 PM](https://user-images.githubusercontent.com/457238/183720063-9c87ce24-e4d4-4a9d-b883-b085a12f48a8.png)
+
+and an OpenAI-like REST API:
+
+![Screen Shot 2022-08-09 at 1 14 44 PM](https://user-images.githubusercontent.com/457238/183715419-56c1467f-e5fe-4ebe-9c3f-b1feb7c4e9b9.png)
+
 
 ## Setup
 
-This repository provides the following Docker services:
+To run Sandle for the first time, you must configure the API keys that the application will
+accept.  To do so, create a file called `authorized-users.txt` in this directory and add the
+accepted API keys to it, one key per line.  API keys must use the base 64 alphabet.  If
+you are not exposing your Sandle instance to the internet, you may wish to use a simple API
+key like "test" or your system username.
 
- * `backend-hf`: a service that implements a subset of [the OpenAI `/v1/completions` API](https://beta.openai.com/docs) (without authentication) using a single-threaded web server on top of HuggingFace, supporting `OPT` and `Bloom` at the time of writing.  Alone, this service is suitable for [a single user at a time](#serving-the-api-for-a-single-user-without-docker).
- * `openai-wrapper`: a service that implements a subset of [the OpenAI `/v1/models`, `/v1/models/<model>`, and `/v1/completions` APIs](https://beta.openai.com/docs) (with authentication), implementing the latter by calling the `backend-hf` service.  It uses a multi-threaded web server and is suitable for multiple users.
- * `demo`: an [nginx](https://nginx.org) web server that acts as a reverse proxy in front of the API (the `openai-wrapper` service) and serves a web interface for text completion using the proxied API.
-
-These services can be run together on your local machine using [Docker Compose](https://docs.docker.com/compose/).  The Docker Compose configuration file (`docker-compose.yml`) specifies how they are invoked.
-
-### Demo
-
-A web interface is provided to illustrate the API functionality and facilitate exploration of the models:
-
-<p align="center">
-<img width="640" alt="Screen shot of web demo" src="https://user-images.githubusercontent.com/457238/182888618-96166a7e-eca6-4303-bd5b-20e28b22beb9.png">
-</p>
-
-To build and run this demo using Docker Compose, do:
+Then, to build and run SANDLE using Docker Compose, do:
 
 ```bash
 docker-compose up --build
@@ -43,7 +40,18 @@ v1.28.0 or later.  To use Docker Compose
 on BRTX, [install a new, standalone version of docker
 compose](https://docs.docker.com/compose/install/compose-plugin/#install-the-plugin-manually)
 to your home directory and run that version instead of the
-system-installed version.
+system-installed version.  For example, to download Docker Compose
+standalone version 2.7.0:
+
+```bash
+curl -SL https://github.com/docker/compose/releases/download/v2.7.0/docker-compose-linux-x86_64 -o docker-compose
+chmod 755 docker-compose
+./docker-compose --version
+```
+
+Additionally, on BRTX, the server will be bound to the local host using IPv4 but `localhost`
+will resolve to the local host using IPv6.  When connecting to the API, specify `127.0.0.1` or
+`localhost4` instead of `localhost`.
 
 #### K80
 
@@ -61,27 +69,22 @@ services:
       - 'NVIDIA_REQUIRE_CUDA=cuda>=11.0 brand=tesla,driver>=418,driver<419 brand=tesla,driver>=440,driver<441 driver>=450'
 ```
 
-### Serving the API for a single user without Docker
-
-If you only need the API for a single user, it is easy to run the `backend-hf` service by itself, outside of Docker.  Ensure the cuda toolkit and pytorch are installed, then install the Python requirements specified in `backend-hf/requirements.txt`, and run (for example)
-
-```bash
-python backend-hf/serve-backend-hf.py --port 12349
-```
-
-to serve the partial `/v1/completions` API on port 12349 on your local host.  The equivalent Docker usage would be (approximately):
-
-```bash
-docker build -t $USER/backend-hf backend-hf && docker run -it -p 12349:8000 $USER/backend-hf --port 8000
-```
 
 ## Usage
 
 ### Authentication
 
-By default, the openai-wrapper service will generate a random API key every time it starts up.
-This API key will be logged to the console.  You can also specify your own (base-64–encoded) API
-key by passing the `--auth-token` argument on the command line.
+API keys are listed in a user-created file in the current directory, `authorized-users.txt`,
+one key per line.  API keys should use the base 64 alphabet.
+
+A single accepted API key can also be specified via command line argument or environment
+variable.  For more information, run the following:
+
+```
+docker-compose run --no-deps openai-wrapper --help
+```
+
+The current authentication configuration is specified in `docker-compose.yml`.
 
 [As in the OpenAI API](https://beta.openai.com/docs/api-reference/authentication), the API key can be used either as a "Bearer" authentication token or as a basic authentication password (with the user being the empty string).
 
@@ -93,7 +96,7 @@ For example, on OpenAI:
 ```bash
 curl "https://api.openai.com/v1/completions" \
   -H 'Content-Type: application/json' \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Authorization: Bearer YOUR_OPENAI_API_KEY" \
   -d '{
   "model": "text-davinci-002",
   "prompt": "Say this is a test"
@@ -105,7 +108,7 @@ and on a local Sandle deployment:
 ```bash
 curl "http://YOUR_SANDLE_SERVER/v1/completions" \
   -H 'Content-Type: application/json' \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Authorization: Bearer YOUR_SANDLE_API_KEY" \
   -d '{
   "model": "facebook/opt-2.7b",
   "prompt": "Say this is a test"
@@ -118,6 +121,33 @@ Note that Sandle only supports HTTP (not HTTPS) at this time.
 
 See our [API documentation](https://hltcoe.github.io/sandle) for a description of the subset of the OpenAI API implemented by Sandle.
 This documentation is generated using the Swagger UI on our API definition file at `docs/swagger.yaml`.
+
+
+## Advanced Usage
+
+
+This repository provides the following Docker services:
+
+ * `backend-hf`: a service that implements a subset of [the OpenAI `/v1/completions` API](https://beta.openai.com/docs) (without authentication) using a single-threaded web server on top of HuggingFace, supporting `OPT` and `Bloom` at the time of writing.  Alone, this service is suitable for [a single user at a time](#serving-the-api-for-a-single-user-without-docker).
+ * `openai-wrapper`: a service that implements a subset of [the OpenAI `/v1/models`, `/v1/models/<model>`, and `/v1/completions` APIs](https://beta.openai.com/docs) (with authentication), implementing the latter by calling the `backend-hf` service.  It uses a multi-threaded web server and is suitable for multiple users.
+ * `demo`: an [nginx](https://nginx.org) web server that acts as a reverse proxy in front of the API (the `openai-wrapper` service) and serves a web interface for text completion using the proxied API.
+
+These services can be run together on your local machine using [Docker Compose](https://docs.docker.com/compose/), configured in `docker-compose.yml`.
+
+### Serving the API for a single user without Docker
+
+If you only need the API for a single user, you can run the `backend-hf` service by itself, outside of Docker.  Ensure the cuda toolkit and pytorch are installed, then install the Python requirements specified in `backend-hf/requirements.txt`, and run (for example)
+
+```bash
+python backend-hf/serve-backend-hf.py --port 12349
+```
+
+to serve the partial `/v1/completions` API on port 12349 on your local host.  The equivalent Docker usage would be (approximately):
+
+```bash
+docker build -t $USER/backend-hf backend-hf && docker run -it -p 12349:8000 $USER/backend-hf --port 8000
+```
+
 
 ## Development
 
@@ -158,6 +188,7 @@ Finally, do the following to build and run the stub backend on the default netwo
 ```
 docker run --network sandle_default --name backend-hf --rm `docker build -q backend-stub`
 ```
+
 
 ## Testing
 
