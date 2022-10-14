@@ -69,18 +69,15 @@ def truncate_at_stops(text: str, stop_strings: List[str]) -> Tuple[str, bool]:
 
 
 class LM:
-    max_memory: Optional[MaxMemoryDict]
     offload_dir: Optional[str]
     load_in_8bit: bool
     models: Dict[str, Tuple[PreTrainedTokenizer, PreTrainedModel]]
     main_device: str
 
     def __init__(self,
-                 max_memory: Optional[MaxMemoryDict] = None,
                  offload_dir: Optional[str] = None,
                  preload_model: Optional[str] = None,
                  load_in_8bit: bool = False):
-        self.max_memory = max_memory
         self.offload_dir = offload_dir
         self.load_in_8bit = load_in_8bit
 
@@ -111,9 +108,8 @@ class LM:
                 offload_state_dict = False
             model = AutoModelForCausalLM.from_pretrained(
                 model_id,
-                device_map='auto',
+                device_map='balanced_low_0',
                 load_in_8bit=self.load_in_8bit,
-                max_memory=self.max_memory,
                 torch_dtype=torch.float16,
                 offload_folder=self.offload_dir,
                 offload_state_dict=offload_state_dict,
@@ -284,12 +280,10 @@ def make_error_response(status: int, message: str, error_type: str,
     ))
 
 
-def create_app(max_memory: Optional[MaxMemoryDict] = None,
-               offload_dir: Optional[str] = None,
+def create_app(offload_dir: Optional[str] = None,
                preload_model: Optional[str] = None,
                load_in_8bit: bool = False) -> Flask:
     lm = LM(
-        max_memory=max_memory,
         offload_dir=offload_dir,
         preload_model=preload_model,
         load_in_8bit=load_in_8bit,
@@ -440,13 +434,6 @@ def main():
                         help='Hostname or IP to serve on')
     parser.add_argument('-p', '--port', type=int, default=8000,
                         help='Port to serve on')
-    parser.add_argument('-n', '--num-gpus', type=int, default=1,
-                        help='Number of GPUs to use')
-    parser.add_argument('-f', '--first-gpu-memory', default='12GB',
-                        help='Max memory to use for the model on the first GPU, where the '
-                             'inputs will be stored')
-    parser.add_argument('-g', '--successive-gpu-memory', default='24GB',
-                        help='Max memory to use for the model on each successive GPU')
     parser.add_argument('-d', '--offload-dir',
                         help='Directory where model will be offloaded if available memory is exceeded')
     parser.add_argument('-m', '--preload-model',
@@ -469,19 +456,6 @@ def main():
     )
     sentry_sdk.set_tag('component', 'backend-hf')
 
-    if args.num_gpus == 1:
-        logging.info(f'Using {args.num_gpus} GPU with up to {args.first_gpu_memory} model memory')
-    else:
-        logging.info(
-            f'Using {args.num_gpus} GPUs '
-            f'with up to {args.first_gpu_memory} model memory on the first GPU '
-            f'and up to {args.successive_gpu_memory} model memory on each successive GPU'
-        )
-    max_memory = dict(
-        (i, args.first_gpu_memory if i == 0 else args.successive_gpu_memory)
-        for i in range(args.num_gpus)
-    )
-
     if args.preload_model:
         preload_model = args.preload_model
     elif os.environ.get('SANDLE_SINGLE_MODEL'):
@@ -490,7 +464,6 @@ def main():
         preload_model = None
 
     app = create_app(
-        max_memory=max_memory,
         offload_dir=args.offload_dir,
         preload_model=preload_model,
         load_in_8bit=args.load_in_8bit,

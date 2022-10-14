@@ -3,13 +3,14 @@ import os
 import secrets
 from base64 import b64encode
 from functools import wraps
-from typing import Any, cast, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
 from flask import Flask, jsonify, make_response, Response, request
 from flask_cors import CORS
 from flask_httpauth import HTTPBasicAuth, HTTPTokenAuth, MultiAuth
+from huggingface_hub import HfApi
 import requests
 from requests.exceptions import ConnectionError, Timeout
 from waitress import serve
@@ -20,39 +21,25 @@ ModelData = Dict[str, Any]
 
 END_OF_STREAM = '[DONE]'
 
-MODELS = [
-    {
-        'id': model_id,
-        'object': 'model',
-        'owned_by': '',
-        'permission': [],
-        'family': model_family,
-        'size': model_size,
-    } for (model_id, model_family, model_size) in (
-        ('facebook/opt-125m', 'OPT', '125m'),
-        ('facebook/opt-350m', 'OPT', '350m'),
-        ('facebook/opt-1.3b', 'OPT', '1.3b'),
-        ('facebook/opt-2.7b', 'OPT', '2.7b'),
-        ('facebook/opt-6.7b', 'OPT', '6.7b'),
-        ('facebook/opt-13b', 'OPT', '13b'),
-        ('facebook/opt-30b', 'OPT', '30b'),
-        ('facebook/opt-66b', 'OPT', '66b'),
-        ('bigscience/bloom-350m', 'Bloom', '350m'),
-        ('bigscience/bloom-760m', 'Bloom', '760m'),
-        ('bigscience/bloom-1b3', 'Bloom', '1.3b'),
-        ('bigscience/bloom-2b5', 'Bloom', '2.5b'),
-        ('bigscience/bloom-6b3', 'Bloom', '6.3b'),
-        ('bigscience/bloom', 'Bloom', '176b'),
-    )
-]
-
-
-def get_models_dict() -> Dict[str, ModelData]:
-    return cast(Dict[str, ModelData], dict((m['id'], m) for m in MODELS))
-
 
 def get_model_data(model_id: str) -> Optional[ModelData]:
-    return get_models_dict().get(model_id)
+    api = HfApi()
+    model_infos = [
+        model_info
+        for model_info in api.list_models(search=model_id)
+        if model_info.modelId == model_id
+    ]
+    if model_infos:
+        [model_info] = model_infos
+        model_data = {
+            'id': model_info.modelId,
+            'object': 'model',
+            'owned_by': model_info.author if model_info.author else '',
+            'permission': [],
+        }
+        return model_data
+    else:
+        return None
 
 
 def generate_auth_token(password_length: int = 16) -> str:
@@ -88,7 +75,8 @@ def make_error_response(status: int, message: str, error_type: str,
 
 
 def create_app(accepted_auth_tokens: List[str], backend_completions_url: str,
-               auth_token_is_user: bool = False) -> Flask:
+               auth_token_is_user: bool = False,
+               allowed_models: Optional[Iterable[str]] = None) -> Flask:
     app = Flask(__name__)
 
     # We use CORS just to facilitate development and debugging
@@ -151,8 +139,13 @@ def create_app(accepted_auth_tokens: List[str], backend_completions_url: str,
     @strip_www_authenticate_header
     @multi_auth.login_required
     def get_models():
+        if allowed_models is not None:
+            models = [get_model_data(model_id) for model_id in allowed_models]
+        else:
+            models = []
+
         return jsonify({
-            'data': MODELS,
+            'data': models,
             'object': 'list'
         })
 
@@ -162,13 +155,20 @@ def create_app(accepted_auth_tokens: List[str], backend_completions_url: str,
     def get_model(model):
         try:
             model_data = get_model_data(model)
-        except Exception:
+        except Exception as ex:
+            logging.debug(f'Error getting data for model {model}', exc_info=ex)
             model_data = None
 
         if model_data is None:
             return make_error_response(
                 404,
                 'That model does not exist',
+                'invalid_request_error',
+            )
+        elif allowed_models is not None and model_data['id'] not in allowed_models:
+            return make_error_response(
+                403,
+                'Not allowed to use that model',
                 'invalid_request_error',
             )
         else:
@@ -206,7 +206,8 @@ def create_app(accepted_auth_tokens: List[str], backend_completions_url: str,
         model = request_json.get('model')
         try:
             model_data = get_model_data(model)
-        except Exception:
+        except Exception as ex:
+            logging.debug(f'Error getting data for model {model}', exc_info=ex)
             model_data = None
 
         if model_data is not None:
@@ -265,10 +266,9 @@ def main():
                         help='If true, use the authorization token as the API user. '
                              'This behavior may result in auth tokens showing up in logs.')
     parser.add_argument('-m', '--allow-model', action='append', metavar='model',
-                        choices=tuple(m['id'] for m in MODELS),
                         help='Allow only the specified model(s) to be used. '
                              'Can be provided multiple times to allow multiple models. '
-                             'By default, all supported models are allowed.')
+                             'By default, all available models are allowed.')
     parser.add_argument('-l', '--log-level',
                         choices=('CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'), default='INFO',
                         help='Logging verbosity level threshold (to stderr)')
@@ -300,22 +300,20 @@ def main():
         logging.info(f'Generated authorization token (API key): {auth_tokens[0]}')
 
     if args.allow_model:
-        allowed_models_set = set(args.allow_model)
+        allowed_models = set(args.allow_model)
     elif os.environ.get('SANDLE_SINGLE_MODEL'):
-        allowed_models_set = {os.environ['SANDLE_SINGLE_MODEL']}
+        allowed_models = {os.environ['SANDLE_SINGLE_MODEL']}
     else:
-        allowed_models_set = set()
+        allowed_models = None
 
-    if allowed_models_set:
-        logging.info(f'Allowing only the specified model(s) to be used: {allowed_models_set}')
-        models_to_remove = [m for m in MODELS if m['id'] not in allowed_models_set]
-        for model_to_remove in models_to_remove:
-            MODELS.remove(model_to_remove)
+    if allowed_models is not None:
+        logging.info(f'Allowing only the specified model(s) to be used: {allowed_models}')
 
     app = create_app(
         accepted_auth_tokens=auth_tokens,
         backend_completions_url=args.backend_completions_url,
         auth_token_is_user=args.auth_token_is_user,
+        allowed_models=allowed_models,
     )
     serve(app, host=args.host, port=args.port)
 

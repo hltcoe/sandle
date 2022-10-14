@@ -27,6 +27,8 @@ services:
       - --auth-token-is-user
       - --auth-token-file
       - /opt/sandle/authorized-users.txt
+      - -l
+      - DEBUG
     depends_on:
       - backend-hf
     environment:
@@ -49,12 +51,6 @@ services:
     command:
       - --port
       - '8000'
-      - --num-gpus
-      - '8'
-      - --first-gpu-memory
-      - '12GB'
-      - --successive-gpu-memory
-      - '24GB'
       - --load-in-8bit
     environment:
       - SANDLE_SINGLE_MODEL
