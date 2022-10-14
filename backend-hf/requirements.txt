@@ -1,5 +1,5 @@
 accelerate
 flask
 sentry-sdk[flask]
-transformers>=4.20.1
+transformers>=4.22
 waitress

@@ -51,12 +51,6 @@ services:
     command:
       - --port
       - '8000'
-      - --num-gpus
-      - '8'
-      - --first-gpu-memory
-      - '12GB'
-      - --successive-gpu-memory
-      - '24GB'
     environment:
       - SANDLE_SINGLE_MODEL
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}
