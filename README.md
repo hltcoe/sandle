@@ -134,6 +134,19 @@ This repository provides the following Docker services:
 
 These services can be run together on your local machine using [Docker Compose](https://docs.docker.com/compose/), configured in `docker-compose.yml`.
 
+### bnb-int8
+
+The bnb-int8 algorithm leverages newer GPU architectures to reduce the GPU memory required for inference by about half.  This algorithm can be used by providing the `--load-in-8bit` argument to the backend.  For example, in `docker-compose.yml`:
+
+```yaml
+services:
+  ...
+  backend-hf:
+    ...
+    command:
+      - --load-in-8bit
+```
+
 ### Serving the API for a single user without Docker
 
 If you only need the API for a single user, you can run the `backend-hf` service by itself, outside of Docker.  Ensure the cuda toolkit and pytorch are installed, then install the Python requirements specified in `backend-hf/requirements.txt`, and run (for example)

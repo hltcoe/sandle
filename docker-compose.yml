@@ -51,7 +51,6 @@ services:
     command:
       - --port
       - '8000'
-      - --load-in-8bit
     environment:
       - SANDLE_SINGLE_MODEL
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}
