@@ -29,7 +29,7 @@
               <textarea
                 class="form-control"
                 :disabled="runningCompletions"
-                rows="10"
+                rows="20"
                 placeholder="Say this is a test."
                 v-model="prompt"
                 ref="textbox"
