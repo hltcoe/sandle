@@ -29,7 +29,7 @@
               <textarea
                 class="form-control"
                 :disabled="runningCompletions"
-                rows="10"
+                rows="20"
                 placeholder="Say this is a test."
                 v-model="prompt"
                 ref="textbox"
@@ -317,15 +317,14 @@ import * as Sentry from "@sentry/vue";
 
 const DEFAULT_TEMPERATURE = 0.7;
 const BASE_64_REGEX = /^[A-Za-z0-9+/=]*$/;
-const DEFAULT_MODELS = [
-    'facebook/opt-125m',
-    'facebook/opt-350m',
-    'facebook/opt-1.3b',
-    'bigscience/bloom-350m',
-    'bigscience/bloom-760m',
-    'bigscience/bloom-1b3',
-];
 const KNOWN_MODEL_DETAILS = new Map()
+KNOWN_MODEL_DETAILS.set('bigscience/bloom-350m', {family: 'Bloom', size: '350m'})
+KNOWN_MODEL_DETAILS.set('bigscience/bloom-760m', {family: 'Bloom', size: '760m'})
+KNOWN_MODEL_DETAILS.set('bigscience/bloom-1b3', {family: 'Bloom', size: '1.3b'})
+KNOWN_MODEL_DETAILS.set('bigscience/bloom-2b5', {family: 'Bloom', size: '2.5b'})
+KNOWN_MODEL_DETAILS.set('bigscience/bloom-6b3', {family: 'Bloom', size: '6.3b'})
+KNOWN_MODEL_DETAILS.set('bigscience/bloom', {family: 'Bloom', size: '176b'})
+KNOWN_MODEL_DETAILS.set('EleutherAI/gpt-j-6B', {family: 'GPT-J', size: '6b'})
 KNOWN_MODEL_DETAILS.set('facebook/opt-125m', {family: 'OPT', size: '125m'})
 KNOWN_MODEL_DETAILS.set('facebook/opt-350m', {family: 'OPT', size: '350m'})
 KNOWN_MODEL_DETAILS.set('facebook/opt-1.3b', {family: 'OPT', size: '1.3b'})
@@ -333,13 +332,8 @@ KNOWN_MODEL_DETAILS.set('facebook/opt-2.7b', {family: 'OPT', size: '2.7b'})
 KNOWN_MODEL_DETAILS.set('facebook/opt-6.7b', {family: 'OPT', size: '6.7b'})
 KNOWN_MODEL_DETAILS.set('facebook/opt-13b', {family: 'OPT', size: '13b'})
 KNOWN_MODEL_DETAILS.set('facebook/opt-30b', {family: 'OPT', size: '30b'})
-KNOWN_MODEL_DETAILS.set('facebook/opt-60b', {family: 'OPT', size: '60b'})
-KNOWN_MODEL_DETAILS.set('bigscience/bloom-350m', {family: 'Bloom', size: '350m'})
-KNOWN_MODEL_DETAILS.set('bigscience/bloom-760m', {family: 'Bloom', size: '760m'})
-KNOWN_MODEL_DETAILS.set('bigscience/bloom-1b3', {family: 'Bloom', size: '1.3b'})
-KNOWN_MODEL_DETAILS.set('bigscience/bloom-2b5', {family: 'Bloom', size: '2.5b'})
-KNOWN_MODEL_DETAILS.set('bigscience/bloom-6b3', {family: 'Bloom', size: '6.3b'})
-KNOWN_MODEL_DETAILS.set('bigscience/bloom', {family: 'Bloom', size: '176b'})
+KNOWN_MODEL_DETAILS.set('facebook/opt-66b', {family: 'OPT', size: '66b'})
+const DEFAULT_MODELS = Array.from(KNOWN_MODEL_DETAILS.keys());
 
 
 function formatAxiosError(e) {
