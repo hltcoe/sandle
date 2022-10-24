@@ -108,7 +108,7 @@ class LM:
                 offload_state_dict = False
             model = AutoModelForCausalLM.from_pretrained(
                 model_id,
-                device_map='balanced_low_0',
+                device_map='balanced_low_0' if torch.cuda.device_count() > 1 else 'auto',
                 load_in_8bit=self.load_in_8bit,
                 torch_dtype=torch.float16,
                 offload_folder=self.offload_dir,
@@ -228,7 +228,9 @@ class LM:
         ))
         completions = []
         for completion_num in range(output_token_ids.shape[0]):
-            output_text = clean_output_text(tokenizer.decode(output_token_ids[completion_num].tolist()))
+            output_text = clean_output_text(tokenizer.decode(
+                output_token_ids[completion_num].tolist(),
+                clean_up_tokenization_spaces=False))
             if output_text.startswith(text):
                 new_text = output_text[len(text):]
                 (new_text, truncated) = truncate_at_stops(new_text, stop_strings)
