@@ -191,6 +191,89 @@ docker run --network sandle_default --name backend-hf --rm `docker build -q back
 
 ## Testing
 
+### Static Analysis
+
+We use flake8 to automatically check the style and syntax of the code
+and mypy to check type correctness.  To perform the checks, go into
+each of the component subdirectories (`backend-hf`, `backend-stub`,
+`openai-wrapper`) in turn and do:
+
+```
+pip install -r dev-requirements.txt
+flake8
+mypy
+```
+
+The first line only needs to be done once per component.
+
+### Property Testing
+
+We use [Hypothesis](https://hypothesis.readthedocs.io/en/latest/) to
+randomly generate test cases for the backend and assert properties of
+interest for the output.  For example, for any valid input, a basic
+property that we would like to test is that Sandle doesn't crash on
+that input.  A slightly more advanced property might be that the output
+does not exceed the user-specified length limit.
+
+Property tests are defined in `backend-hf/tests/test_service.py` and
+automatically discovered and run by pytest.
+
+To run the tests, first go to the `backend-hf` subdirectory.  The rest
+of this section assumes you are in that directory.
+
+Then, install the basic test requirements:
+
+```
+pip install -r dev-requirements.txt
+```
+
+The tests assume a backend service exists at http://localhost:8000; you
+must start this service yourself.  You can start the service in Docker
+or directly on the host machine, depending on your needs.  The
+following two examples illustrate how to use these methods to start the
+backend service listening to port 8000 and using the first GPU on your
+host system.
+
+To start the service in Docker (publishing container port 8000 to host
+port 8000):
+
+```
+docker build -t backend-hf . \
+  && docker run -it --gpus device=0 -p 8000:8000 backend-hf
+```
+
+Alternatively, to start the service directly on your host, install
+the requirements (CUDA, PyTorch, and the requirements specified in
+`requirements.txt`), then run:
+
+```
+CUDA_VISIBLE_DEVICES=0 python serve-backend-hf.py
+```
+
+Then, you can test that the service is up:
+
+```
+curl "http://127.0.0.1:8000/v1/completions" \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "model": "facebook/opt-125m",
+  "prompt": "Say this is a test"
+}'
+```
+
+Finally, to run the explicit property test cases:
+
+```
+pytest --hypothesis-profile explicit
+```
+
+Alternatively, to run explicit test cases and automatically generate
+and test new cases (may take a while):
+
+```
+pytest
+```
+
 ### Fuzz Testing
 
 To perform fuzz testing using the Microsoft RESTler tool in Docker:
