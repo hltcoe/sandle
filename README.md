@@ -120,7 +120,9 @@ These services can be run together on your local machine using [Docker Compose](
 
 ### bnb-int8
 
-The bnb-int8 algorithm leverages newer GPU architectures to reduce the GPU memory required for inference by about half.  This algorithm can be used by providing the `--load-in-8bit` argument to the backend.  For example, in `docker-compose.yml`:
+The bnb-int8 algorithm leverages newer GPU architectures to reduce the GPU memory required for inference by about half while largely maintaining the quality of outputs.  However, there is no free lunch, and in our experience, this algorithm substantially increases runtime (by a factor of two in simple cases).
+
+The bnb-int8 algorithm can be used by providing the `--load-in-8bit` argument to the backend.  For example, in `docker-compose.yml`:
 
 ```yaml
 services:
