@@ -108,7 +108,7 @@ class LM:
                 offload_state_dict = False
             model = AutoModelForCausalLM.from_pretrained(
                 model_id,
-                device_map='balanced_low_0',
+                device_map='balanced_low_0' if torch.cuda.device_count() > 1 else 'auto',
                 load_in_8bit=self.load_in_8bit,
                 torch_dtype=torch.float16,
                 offload_folder=self.offload_dir,
