@@ -239,7 +239,7 @@ port 8000):
 
 ```
 docker build -t backend-hf . \
-  && docker run -it --gpus device=0 -p 8000:8000 backend-hf
+  && docker run --rm -it --gpus device=0 -p 8000:8000 backend-hf
 ```
 
 Alternatively, to start the service directly on your host, install
