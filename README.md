@@ -53,22 +53,6 @@ Additionally, on BRTX, the server will be bound to the local host using IPv4 but
 will resolve to the local host using IPv6.  When connecting to the API, specify `127.0.0.1` or
 `localhost4` instead of `localhost`.
 
-#### K80
-
-The Nvidia Tesla K80 is no longer actively supported by Nvidia and
-[newer versions of the `nvidia/cuda` Docker base image are configured
-not to run on K80 cuda drivers](https://gitlab.com/nvidia/container-images/cuda/-/issues/165#note_1005164251).  To work around this, modify the docker
-compose configuration to add the desired cuda driver version to the
-`NVIDIA_REQUIRE_CUDA` environment variable in the `backend-hf` service.  For
-example:
-
-```yaml
-services:
-  backend-hf:
-    environment:
-      - 'NVIDIA_REQUIRE_CUDA=cuda>=11.0 brand=tesla,driver>=418,driver<419 brand=tesla,driver>=440,driver<441 driver>=450'
-```
-
 
 ## Usage
 
