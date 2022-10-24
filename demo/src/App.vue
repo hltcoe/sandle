@@ -9,14 +9,6 @@
       </h6>
     </header>
 
-    <a
-      class="github-fork-ribbon position-absolute position-top-0 position-end-0"
-      href="https://github.com/hltcoe/sandle"
-      data-ribbon="Fork me on GitHub"
-      title="Fork me on GitHub"
-      >Fork me on GitHub</a
-    >
-
     <main>
       <div class="row">
         <div class="col-8">
@@ -569,13 +561,4 @@ A:`,
 </style>
 
 <style src="bootstrap-icons/font/bootstrap-icons.css">
-</style>
-
-<style src="github-fork-ribbon-css/gh-fork-ribbon.css">
-</style>
-
-<style scoped>
-.github-fork-ribbon:before {
-  background-color: #000;
-}
 </style>
