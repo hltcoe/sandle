@@ -9,6 +9,7 @@ RUN apt-get update && \
 
 # Configure server
 COPY nginx.default.conf /etc/nginx/conf.d/default.conf
+COPY 50x.json /usr/share/nginx/html/v1/
 
 # Sentry build-time configuration
 ARG VITE_SENTRY_DSN
