@@ -12,6 +12,7 @@ from sentry_sdk.integrations.flask import FlaskIntegration
 import torch
 from flask import Flask, jsonify, make_response, Response, request
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers.generation_stopping_criteria import StoppingCriteria, StoppingCriteriaList
 from transformers.modeling_utils import PreTrainedModel
 from transformers.tokenization_utils import PreTrainedTokenizer
 from waitress import serve
@@ -32,6 +33,32 @@ FINISH_REASON_LENGTH = 'length'
 MaxMemoryDict = Dict[Union[int, str], Union[int, str]]
 
 
+def tokenizer_decode(token_ids: List[int], tokenizer: PreTrainedTokenizer,
+                     prefix_to_skip: str = EOS) -> str:
+    text = tokenizer.decode(token_ids, clean_up_tokenization_spaces=False)
+    if prefix_to_skip and text.startswith(prefix_to_skip):
+        return text[len(prefix_to_skip):]
+    else:
+        return text
+
+
+class SubstringMatchStoppingCriteria(StoppingCriteria):
+    def __init__(self, stop_string: str, prompt: str, tokenizer: PreTrainedTokenizer):
+        self.stop_string = stop_string
+        self.prompt = prompt
+        self.tokenizer = tokenizer
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+        for input_num in range(input_ids.shape[0]):
+            text = tokenizer_decode(input_ids[input_num].tolist(), self.tokenizer)
+            if not text.startswith(self.prompt):
+                raise Exception(f'Generated text "{text}" does not begin with prompt "{self.prompt}"')
+            if self.stop_string not in text[len(self.prompt):]:
+                return False
+
+        return True
+
+
 class Completion(NamedTuple):
     text: str
     finish_reason: Optional[str]
@@ -43,11 +70,6 @@ class RawCompletion(NamedTuple):
     pretruncation_num_new_tokens: int
     new_text: str
     truncated: bool
-
-
-def clean_output_text(text: str) -> str:
-    dirty_prefix = '</s>'
-    return text[len(dirty_prefix):] if text.startswith(dirty_prefix) else text
 
 
 def generate_response_id() -> str:
@@ -225,12 +247,14 @@ class LM:
         output_token_ids = cast(torch.Tensor, model.generate(
             input_token_ids.to(self.main_device), max_new_tokens=max_new_tokens, do_sample=do_sample, top_p=top_p,
             temperature=temperature, num_return_sequences=num_return_sequences,
+            stopping_criteria=StoppingCriteriaList(
+                SubstringMatchStoppingCriteria(stop_string, text, tokenizer)
+                for stop_string in stop_strings
+            ),
         ))
         completions = []
         for completion_num in range(output_token_ids.shape[0]):
-            output_text = clean_output_text(tokenizer.decode(
-                output_token_ids[completion_num].tolist(),
-                clean_up_tokenization_spaces=False))
+            output_text = tokenizer_decode(output_token_ids[completion_num].tolist(), tokenizer)
             if output_text.startswith(text):
                 new_text = output_text[len(text):]
                 (new_text, truncated) = truncate_at_stops(new_text, stop_strings)
@@ -242,7 +266,7 @@ class LM:
                     truncated=truncated,
                 ))
             else:
-                raise Exception(f'Generated text "{output_text}" does not begin with input text "{text}"')
+                raise Exception(f'Generated text "{output_text}" does not begin with prompt "{text}"')
 
         return completions
 
