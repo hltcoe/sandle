@@ -2,5 +2,5 @@ accelerate>=0.12.0
 bitsandbytes
 flask
 sentry-sdk[flask]
-transformers>=4.22
+transformers>=4.22,<4.25
 waitress
