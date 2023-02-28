@@ -263,8 +263,9 @@ def main():
                              'Auth token file is ignored if --auth-token is specified.  '
                              'If no tokens are specified, one will be generated on startup.')
     parser.add_argument('-u', '--auth-token-is-user', action='store_true',
-                        help='If true, use the authorization token as the API user. '
-                             'This behavior may result in auth tokens showing up in logs.')
+                        help='If true, use the authorization token as a user identifier on the backend, '
+                             'allowing activity to be tracked on a per-user basis. '
+                             'If set, auth tokens will show up in logs.')
     parser.add_argument('-m', '--allow-model', action='append', metavar='model',
                         help='Allow only the specified model(s) to be used. '
                              'Can be provided multiple times to allow multiple models. '
@@ -285,17 +286,29 @@ def main():
     )
     sentry_sdk.set_tag('component', 'openai-wrapper')
 
+    auth_tokens = []
     if args.auth_token:
         auth_tokens = args.auth_token
-        logging.info('Authorization tokens (API keys) read from command-line argument')
+        if auth_tokens:
+            logging.info('Authorization tokens (API keys) read from command-line argument')
+        else:
+            logging.info('No authorization tokens (API keys) read from command-line argument')
     elif args.auth_token_file:
-        with open(args.auth_token_file) as f:
-            auth_tokens = [line.strip() for line in f if line]
-        logging.info('Authorization tokens (API keys) read from file')
+        if os.path.exists(args.auth_token_file):
+            with open(args.auth_token_file) as f:
+                auth_tokens = [line.strip() for line in f if line]
+            if auth_tokens:
+                logging.info('Authorization tokens (API keys) read from file')
+            else:
+                logging.warning('No authorization tokens (API keys) read from file')
     elif os.environ.get('SANDLE_AUTH_TOKEN'):
         auth_tokens = [os.environ['SANDLE_AUTH_TOKEN']]
-        logging.info('Authorization token (API key) read from environment variable')
-    else:
+        if auth_tokens:
+            logging.info('Authorization token (API key) read from environment variable')
+        else:
+            logging.warning('No authorization tokens (API keys) read from environment variable')
+
+    if not auth_tokens:
         auth_tokens = [generate_auth_token()]
         logging.info(f'Generated authorization token (API key): {auth_tokens[0]}')
 

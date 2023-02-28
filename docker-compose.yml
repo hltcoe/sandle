@@ -24,11 +24,12 @@ services:
       - http://backend-hf:8000/v1/completions
       - --port
       - '8000'
-      - --auth-token-is-user
-      - --auth-token-file
-      - /opt/sandle/authorized-users.txt
       - -l
       - DEBUG
+    ## Specify API keys in authorized-users.txt file: part 1/2
+    #  - --auth-token-is-user
+    #  - --auth-token-file
+    #  - /opt/sandle/authorized-users.txt
     depends_on:
       - backend-hf
     environment:
@@ -36,11 +37,12 @@ services:
       - SANDLE_SINGLE_MODEL
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}
     restart: unless-stopped
-    volumes:
-      - type: bind
-        source: ./authorized-users.txt
-        target: /opt/sandle/authorized-users.txt
-        read_only: true
+    ## Specify API keys in authorized-users.txt file: part 2/2
+    #volumes:
+    #  - type: bind
+    #    source: ./authorized-users.txt
+    #    target: /opt/sandle/authorized-users.txt
+    #    read_only: true
 
   backend-hf:
     build:

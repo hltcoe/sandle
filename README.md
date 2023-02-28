@@ -17,13 +17,7 @@ and an OpenAI-like REST API:
 
 ## Setup
 
-To run Sandle for the first time, you must configure the API keys that the application will
-accept.  To do so, create a file called `authorized-users.txt` in this directory and add the
-accepted API keys to it, one key per line.  API keys must use the base 64 alphabet.  If
-you are not exposing your Sandle instance to the internet, you may wish to use a simple API
-key like "test" or your system username.
-
-Then, to build and run SANDLE using Docker Compose, do:
+To build and run SANDLE using Docker Compose, do:
 
 ```bash
 docker-compose up --build
@@ -31,6 +25,14 @@ docker-compose up --build
 
 By default, the demo web interface and API endpoint will be bound to port 80 on the host.  Go to
 `http://localhost` in your browser to use the web interface.
+You must have an API key to use the web interface or API endpoint; by default, one will be
+generated and logged on startup.  If you wish to specify the accepted API key explicitly instead
+of using a randomly generated key, set the `SANDLE_AUTH_TOKEN` environment variable with the
+desired API key as the value:
+
+```
+SANDLE_AUTH_TOKEN=ExampleAPIKey docker-compose up --build
+```
 
 #### BRTX
 
@@ -58,19 +60,18 @@ will resolve to the local host using IPv6.  When connecting to the API, specify 
 
 ### Authentication
 
-API keys are listed in a user-created file in the current directory, `authorized-users.txt`,
-one key per line.  API keys should use the base 64 alphabet.
+API keys the application should accept can be specified in a file, as command line arguments,
+or in an environment variable.  If no API keys are specified (the default), one will be
+generated and logged on startup.
 
-A single accepted API key can also be specified via command line argument or environment
-variable.  For more information, run the following:
+For more information about specifying API keys, run the following (and then add the appropriate
+configuration to `docker-compose.yml`):
 
 ```
 docker-compose run --no-deps openai-wrapper --help
 ```
 
-The current authentication configuration is specified in `docker-compose.yml`.
-
-[As in the OpenAI API](https://beta.openai.com/docs/api-reference/authentication), the API key can be used either as a "Bearer" authentication token or as a basic authentication password (with the user being the empty string).
+[As in the OpenAI API](https://beta.openai.com/docs/api-reference/authentication), an API key can be used either as a "Bearer" authentication token or as a basic authentication password (with the user being the empty string).
 
 ### Example API calls
 
