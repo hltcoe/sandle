@@ -1,0 +1,7 @@
+[submodule "backend-llama/llama"]
+	path = backend-llama/llama
+	url = https://github.com/facebookresearch/llama.git
+	branch = main
+[submodule "backend-llama/torch-serve"]
+	path = backend-llama/torch-serve
+	url = https://github.com/pytorch/serve.git

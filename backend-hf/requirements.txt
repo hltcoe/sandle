@@ -1,5 +1,6 @@
 accelerate>=0.12.0
 bitsandbytes
+click
 flask
 sentry-sdk[flask]
 transformers>=4.22,<4.25

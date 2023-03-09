@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  openai-wrapper:
+    environment:
+      - SANDLE_BACKEND_STUB=http://backend-stub:8000
+    depends_on:
+      - backend-stub
+
+  backend-stub:
+    build:
+      context: backend-stub
+    command:
+      - --port
+      - '8000'
+    restart: unless-stopped

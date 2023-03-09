@@ -1,0 +1,35 @@
+version: '3'
+
+services:
+  openai-wrapper:
+    environment:
+      - SANDLE_BACKEND_HF=http://backend-llama:8000
+    depends_on:
+      - backend-llama
+
+  backend-llama:
+    build:
+      context: backend-llama
+      args:
+        - SENTRY_DSN
+        - SENTRY_RELEASE=${APP_NAME}@${APP_VERSION}
+    command:
+      - /opt/llama
+      - llama-7B
+      - --port
+      - '8000'
+    environment:
+      - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    volumes:
+      - type: bind
+        source: /srv/local2/oweller2/llama
+        target: /opt/resources
+        read_only: true
+        volume:
+          nocopy: true

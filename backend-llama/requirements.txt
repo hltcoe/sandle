@@ -1,3 +1,4 @@
 click
 flask
+sentry-sdk[flask]
 waitress

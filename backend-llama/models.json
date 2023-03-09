@@ -1,0 +1,26 @@
+[
+  {
+    "id": "llama-7B",
+    "object": "model",
+    "owned_by": "facebook",
+    "permission": []
+  },
+  {
+    "id": "llama-13B",
+    "object": "model",
+    "owned_by": "facebook",
+    "permission": []
+  },
+  {
+    "id": "llama-30B",
+    "object": "model",
+    "owned_by": "facebook",
+    "permission": []
+  },
+  {
+    "id": "llama-65B",
+    "object": "model",
+    "owned_by": "facebook",
+    "permission": []
+  }
+]

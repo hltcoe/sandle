@@ -1,6 +1,7 @@
 *.code-workspace
 fuzz-test-output
 authorized-users.txt
+docker-compose.override.yml
 
 # Editor temporary files
 *~

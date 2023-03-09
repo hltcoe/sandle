@@ -1,8 +1,8 @@
 import json
 import gc
 import logging
-import os
 from itertools import chain, zip_longest
+from pathlib import Path
 from time import time
 from typing import Any, cast, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
 from uuid import uuid4
@@ -16,8 +16,12 @@ from transformers.generation_stopping_criteria import StoppingCriteria, Stopping
 from transformers.modeling_utils import PreTrainedModel
 from transformers.tokenization_utils import PreTrainedTokenizer
 from waitress import serve
+import click
 
 
+DEFAULT_HOST = '0.0.0.0'
+DEFAULT_PORT = 8000
+DEFAULT_LOG_LEVEL = 'INFO'
 DEFAULT_STREAM_BATCH_SIZE = 0
 DEFAULT_MAX_TOKENS = 16
 DEFAULT_TEMPERATURE = 1.
@@ -91,13 +95,13 @@ def truncate_at_stops(text: str, stop_strings: List[str]) -> Tuple[str, bool]:
 
 
 class LM:
-    offload_dir: Optional[str]
+    offload_dir: Optional[Path]
     load_in_8bit: bool
     models: Dict[str, Tuple[PreTrainedTokenizer, PreTrainedModel]]
     main_device: str
 
     def __init__(self,
-                 offload_dir: Optional[str] = None,
+                 offload_dir: Optional[Path] = None,
                  preload_model: Optional[str] = None,
                  load_in_8bit: bool = False):
         self.offload_dir = offload_dir
@@ -120,10 +124,10 @@ class LM:
             tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=False)
             if self.offload_dir is not None:
                 offload_state_dict = True
-                if not os.path.isdir(self.offload_dir):
+                if not self.offload_dir.is_dir():
                     logging.info(f'offload dir {self.offload_dir} does not exist; creating')
                     try:
-                        os.makedirs(self.offload_dir)
+                        self.offload_dir.mkdir(parents=True, exist_ok=True)
                     except Exception as ex:
                         logging.warning(f'Could not create offload dir {self.offload_dir}', exc_info=ex)
             else:
@@ -306,7 +310,7 @@ def make_error_response(status: int, message: str, error_type: str,
     ))
 
 
-def create_app(offload_dir: Optional[str] = None,
+def create_app(offload_dir: Optional[Path] = None,
                preload_model: Optional[str] = None,
                load_in_8bit: bool = False) -> Flask:
     lm = LM(
@@ -406,7 +410,6 @@ def create_app(offload_dir: Optional[str] = None,
             completion_log_text = 'completion' if num_return_sequences == 1 else 'completions'
             if stream:
                 completion_log_text = 'streaming ' + completion_log_text
-            completion_log_text = 'streaming completion' if stream else 'completion'
             tokens_log_text = 'token' if max_tokens == 1 else 'tokens'
             if num_return_sequences != 1:
                 tokens_log_text = tokens_log_text + ' each'
@@ -450,29 +453,29 @@ def create_app(offload_dir: Optional[str] = None,
     return app
 
 
-def main():
-    from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-    parser = ArgumentParser(
-        description='Run a simplified, single-threaded clone of OpenAI\'s /v1/completions endpoint',
-        formatter_class=ArgumentDefaultsHelpFormatter,
-    )
-    parser.add_argument('--host', default='0.0.0.0',
-                        help='Hostname or IP to serve on')
-    parser.add_argument('-p', '--port', type=int, default=8000,
-                        help='Port to serve on')
-    parser.add_argument('-d', '--offload-dir',
-                        help='Directory where model will be offloaded if available memory is exceeded')
-    parser.add_argument('-m', '--preload-model',
-                        help='Huggingface repository of model to preload (example: facebook/opt-2.7b)')
-    parser.add_argument('-8', '--load-in-8bit', action='store_true',
-                        help='Load model in 8 bit using the bits-and-bytes algorithm')
-    parser.add_argument('-l', '--log-level',
-                        choices=('CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'), default='INFO',
-                        help='Logging verbosity level threshold (to stderr)')
-    args = parser.parse_args()
+@click.command()
+@click.option('--host', type=str, default=DEFAULT_HOST, help='Hostname or IP to serve on')
+@click.option('-p', '--port', type=int, default=DEFAULT_PORT, help='Port to serve on')
+@click.option('-d', '--offload-dir', type=click.Path(file_okay=False, path_type=Path),
+              help='Directory where model will be offloaded if available memory is exceeded')
+@click.option('-8', '--load-in-8bit', is_flag=True,
+              help='Load model in 8 bit using the bits-and-bytes algorithm')
+@click.option('-m', '--single-model', '--preload-model', type=str,
+              help='Huggingface repository of model to preload (example: facebook/opt-2.7b)')
+@click.option('-l', '--log-level', type=click.Choice(('CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG')),
+              default=DEFAULT_LOG_LEVEL, help='Logging verbosity level threshold (to stderr)')
+def main(
+    host: str = DEFAULT_HOST,
+    port: int = DEFAULT_PORT,
+    log_level: str = DEFAULT_LOG_LEVEL,
+    offload_dir: Optional[Path] = None,
+    load_in_8bit: bool = False,
+    single_model: Optional[str] = None,
+):
+    """Run a simplified, single-threaded clone of OpenAI's /v1/completions endpoint"""
 
     logging.basicConfig(format='[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s',
-                        level=args.log_level)
+                        level=log_level)
 
     sentry_sdk.init(
         integrations=[
@@ -482,21 +485,14 @@ def main():
     )
     sentry_sdk.set_tag('component', 'backend-hf')
 
-    if args.preload_model:
-        preload_model = args.preload_model
-    elif os.environ.get('SANDLE_SINGLE_MODEL'):
-        preload_model = os.environ['SANDLE_SINGLE_MODEL']
-    else:
-        preload_model = None
-
     app = create_app(
-        offload_dir=args.offload_dir,
-        preload_model=preload_model,
-        load_in_8bit=args.load_in_8bit,
+        offload_dir=offload_dir,
+        preload_model=single_model,
+        load_in_8bit=load_in_8bit,
     )
 
-    serve(app, host=args.host, port=args.port, threads=1)
+    serve(app, host=host, port=port, threads=1)
 
 
 if __name__ == '__main__':
-    main()
+    main(auto_envvar_prefix='SANDLE')

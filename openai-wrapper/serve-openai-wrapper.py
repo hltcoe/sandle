@@ -2,8 +2,9 @@ import logging
 import os
 import secrets
 from base64 import b64encode
-from functools import wraps
-from typing import Any, Dict, Iterable, List, Optional
+from functools import lru_cache, wraps
+from pathlib import Path
+from typing import Any, Dict, Collection, List, Literal, Optional, Tuple
 
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
@@ -11,35 +12,28 @@ from flask import Flask, jsonify, make_response, Response, request
 from flask_cors import CORS
 from flask_httpauth import HTTPBasicAuth, HTTPTokenAuth, MultiAuth
 from huggingface_hub import HfApi
+from pydantic import BaseModel
 import requests
 from requests.exceptions import ConnectionError, Timeout
 from waitress import serve
+import click
 
 
-ModelData = Dict[str, Any]
+BackendUrl = str
 
+
+class ModelData(BaseModel):
+    id: str
+    object: Literal['model']
+    owned_by: str
+    permission: List
+
+
+DEFAULT_HOST = '0.0.0.0'
+DEFAULT_PORT = 8000
+DEFAULT_LOG_LEVEL = 'INFO'
 
 END_OF_STREAM = '[DONE]'
-
-
-def get_model_data(model_id: str) -> Optional[ModelData]:
-    api = HfApi()
-    model_infos = [
-        model_info
-        for model_info in api.list_models(search=model_id)
-        if model_info.modelId == model_id
-    ]
-    if model_infos:
-        [model_info] = model_infos
-        model_data = {
-            'id': model_info.modelId,
-            'object': 'model',
-            'owned_by': model_info.author if model_info.author else '',
-            'permission': [],
-        }
-        return model_data
-    else:
-        return None
 
 
 def generate_auth_token(password_length: int = 16) -> str:
@@ -74,9 +68,65 @@ def make_error_response(status: int, message: str, error_type: str,
     ))
 
 
-def create_app(accepted_auth_tokens: List[str], backend_completions_url: str,
+def create_app(accepted_auth_tokens: Collection[str],
+               backend_hf: Optional[BackendUrl] = None,
+               backend_llama: Optional[BackendUrl] = None,
+               backend_stub: Optional[BackendUrl] = None,
                auth_token_is_user: bool = False,
-               allowed_models: Optional[Iterable[str]] = None) -> Flask:
+               allowed_model_ids: Optional[Collection[str]] = None) -> Flask:
+    @lru_cache
+    def get_explicit_model_data_and_backends() -> Dict[str, Tuple[ModelData, BackendUrl]]:
+        explicit_backend_urls = [
+            backend_url
+            for backend_url in (backend_llama, backend_stub)
+            if backend_url is not None
+        ]
+        explicit_model_data_and_backends: Dict[str, Tuple[ModelData, BackendUrl]] = {}
+        for backend_url in explicit_backend_urls:
+            backend_models_url = backend_url + '/v1/models'
+            try:
+                r = requests.get(backend_models_url)
+                if r.ok:
+                    for model_data in r.json().get('data', []):
+                        explicit_model_data_and_backends[model_data['id']] = (model_data, backend_url)
+                else:
+                    logging.error(f'HTTP {r.status_code} ({r.reason}) from backend at {backend_models_url}')
+            except ConnectionError:
+                logging.exception(f'Error connecting to backend at {backend_models_url}')
+            except Timeout:
+                logging.exception(f'Timeout connecting to backend at {backend_models_url}')
+        return explicit_model_data_and_backends
+
+    @lru_cache
+    def get_implicit_model_data_and_backend(model_id: str) -> Optional[Tuple[ModelData, BackendUrl]]:
+        if backend_hf is not None:
+            api = HfApi()
+            model_infos = [
+                model_info
+                for model_info in api.list_models(search=model_id)
+                if model_info.modelId == model_id
+            ]
+            if model_infos:
+                [model_info] = model_infos
+                return (
+                    ModelData(
+                        id=model_info.modelId,
+                        object='model',
+                        owned_by=model_info.author if model_info.author else '',
+                        permission=[],
+                    ),
+                    backend_hf,
+                )
+
+        return None
+
+    def get_model_data_and_backend(model_id: str) -> Optional[Tuple[ModelData, BackendUrl]]:
+        explicit_model_data_and_backend = get_explicit_model_data_and_backends().get(model_id)
+        if explicit_model_data_and_backend is not None:
+            return explicit_model_data_and_backend
+        else:
+            return get_implicit_model_data_and_backend(model_id)
+
     app = Flask(__name__)
 
     # We use CORS just to facilitate development and debugging
@@ -139,24 +189,24 @@ def create_app(accepted_auth_tokens: List[str], backend_completions_url: str,
     @strip_www_authenticate_header
     @multi_auth.login_required
     def get_models():
-        if allowed_models is not None:
-            models = [get_model_data(model_id) for model_id in allowed_models]
-        else:
-            models = []
-
         return jsonify({
-            'data': models,
-            'object': 'list'
+            'data': [
+                model_data
+                for (model_data, _)
+                in get_explicit_model_data_and_backends().values()
+            ],
+            'object': 'list',
         })
 
-    @app.route('/v1/models/<path:model>')
+    @app.route('/v1/models/<path:model_id>')
     @strip_www_authenticate_header
     @multi_auth.login_required
-    def get_model(model):
+    def get_model(model_id):
         try:
-            model_data = get_model_data(model)
+            model_data_and_backend = get_model_data_and_backend(model_id)
+            model_data = model_data_and_backend[0] if model_data_and_backend is not None else None
         except Exception as ex:
-            logging.debug(f'Error getting data for model {model}', exc_info=ex)
+            logging.debug(f'Error getting data for model {model_id}', exc_info=ex)
             model_data = None
 
         if model_data is None:
@@ -165,10 +215,10 @@ def create_app(accepted_auth_tokens: List[str], backend_completions_url: str,
                 'That model does not exist',
                 'invalid_request_error',
             )
-        elif allowed_models is not None and model_data['id'] not in allowed_models:
+        elif allowed_model_ids is not None and model_data['id'] not in allowed_model_ids:
             return make_error_response(
                 403,
-                'Not allowed to use that model',
+                'Not allowed to access that model',
                 'invalid_request_error',
             )
         else:
@@ -203,21 +253,22 @@ def create_app(accepted_auth_tokens: List[str], backend_completions_url: str,
                 'invalid_request_error',
             )
 
-        model = request_json.get('model')
+        model_id = request_json.get('model')
         try:
-            model_data = get_model_data(model)
+            model_data_and_backend = get_model_data_and_backend(model_id)
         except Exception as ex:
-            logging.debug(f'Error getting data for model {model}', exc_info=ex)
-            model_data = None
+            logging.debug(f'Error getting data for model {model_id}', exc_info=ex)
+            model_data_and_backend = None
 
-        if model_data is not None:
+        if model_data_and_backend is not None:
+            (model_data, backend_url) = model_data_and_backend
             stream = request_json.get('stream', False)
             if auth_token_is_user:
                 user = multi_auth.current_user()
                 sentry_sdk.set_user({'id': user} if user else None)
                 request_json['user'] = user
             try:
-                r = requests.post(backend_completions_url, json=request_json, stream=stream)
+                r = requests.post(backend_url + '/v1/completions', json=request_json, stream=stream)
             except ConnectionError:
                 message = 'Error connecting to backend service.'
                 logging.exception(message)
@@ -241,95 +292,96 @@ def create_app(accepted_auth_tokens: List[str], backend_completions_url: str,
     return app
 
 
-def main():
-    from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-    parser = ArgumentParser(
-        description='Run a clone of OpenAI\'s API Service in your Local Environment',
-        formatter_class=ArgumentDefaultsHelpFormatter,
-    )
-    parser.add_argument('backend_completions_url',
-                        help='URL of backend text completion endpoint')
-    parser.add_argument('--host', default='0.0.0.0',
-                        help='Hostname or IP to serve on')
-    parser.add_argument('-p', '--port', type=int, default=8000,
-                        help='Port to serve on')
-    parser.add_argument('-t', '--auth-token', action='append',
-                        help='Base-64--encoded authorization token (API key) to accept; '
-                             'can be specified more than once to accept multiple tokens. '
-                             'If none are specified, one will be generated on startup.')
-    parser.add_argument('-f', '--auth-token-file',
-                        help='File containing base-64--encoded authorization tokens (API keys) to accept, '
-                             'one per line.  Blank lines are ignored.  '
-                             'Auth token file is ignored if --auth-token is specified.  '
-                             'If no tokens are specified, one will be generated on startup.')
-    parser.add_argument('-u', '--auth-token-is-user', action='store_true',
-                        help='If true, use the authorization token as a user identifier on the backend, '
-                             'allowing activity to be tracked on a per-user basis. '
-                             'If set, auth tokens will show up in logs.')
-    parser.add_argument('-m', '--allow-model', action='append', metavar='model',
-                        help='Allow only the specified model(s) to be used. '
-                             'Can be provided multiple times to allow multiple models. '
-                             'By default, all available models are allowed.')
-    parser.add_argument('-l', '--log-level',
-                        choices=('CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'), default='INFO',
-                        help='Logging verbosity level threshold (to stderr)')
-    args = parser.parse_args()
+@click.command()
+@click.option('--backend-hf', type=BackendUrl, help='HuggingFace backend URL')
+@click.option('--backend-llama', type=BackendUrl, help='LLaMA backend URL')
+@click.option('--backend-stub', type=BackendUrl, help='Stub backend URL')
+@click.option('--host', type=str, default=DEFAULT_HOST, help='Hostname or IP to serve on')
+@click.option('-p', '--port', type=int, default=DEFAULT_PORT, help='Port to serve on')
+@click.option('-t', '--auth-token', type=str, multiple=True,
+              help='Base-64--encoded authorization token (API key) to accept; '
+                   'can be specified more than once to accept multiple tokens. '
+                   'If none are specified, one will be generated on startup.')
+@click.option('-f', '--auth-token-file', type=click.Path(dir_okay=False, path_type=Path),
+              help='File containing base-64--encoded authorization tokens (API keys) to accept, '
+                   'one per line.  Blank lines are ignored. '
+                   'Auth token file is ignored if --auth-token is specified. '
+                   'If no tokens are specified, one will be generated on startup.')
+@click.option('-u', '--auth-token-is-user', is_flag=True,
+              help='If true, use the authorization token as a user identifier on the backend, '
+                   'allowing activity to be tracked on a per-user basis. '
+                   'If true, auth tokens will show up in logs.')
+@click.option('-m', '--single-model', '--allow-model', type=str, multiple=True,
+              help='Allow only the specified model(s) to be used. '
+                   'Can be provided multiple times to allow multiple models. '
+                   'By default, all available models are allowed.')
+@click.option('-l', '--log-level', type=click.Choice(('CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG')),
+              default=DEFAULT_LOG_LEVEL, help='Logging verbosity level threshold (to stderr)')
+def main(
+    backend_hf: Optional[BackendUrl] = None,
+    backend_llama: Optional[BackendUrl] = None,
+    backend_stub: Optional[BackendUrl] = None,
+    host: str = DEFAULT_HOST,
+    port: int = DEFAULT_PORT,
+    auth_token: Optional[List[str]] = None,
+    auth_token_file: Optional[Path] = None,
+    auth_token_is_user: bool = False,
+    single_model: Optional[List[str]] = None,
+    log_level: str = DEFAULT_LOG_LEVEL,
+):
+    """Run a clone of OpenAI's API Service in your Local Environment"""
 
     logging.basicConfig(format='[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s',
-                        level=args.log_level)
+                        level=log_level)
 
     sentry_sdk.init(
         integrations=[
             FlaskIntegration(),
         ],
-        traces_sample_rate=1.0,  # a rate < 1.0 is recommended for production, yolo
+        traces_sample_rate=0.1,
     )
     sentry_sdk.set_tag('component', 'openai-wrapper')
 
-    auth_tokens = []
-    if args.auth_token:
-        auth_tokens = args.auth_token
-        if auth_tokens:
-            logging.info('Authorization tokens (API keys) read from command-line argument')
+    all_auth_tokens = []
+    if auth_token:
+        all_auth_tokens = auth_token
+        if all_auth_tokens:
+            logging.info('Authorization tokens (API keys) read from command-line argument or environment')
         else:
-            logging.info('No authorization tokens (API keys) read from command-line argument')
-    elif args.auth_token_file:
-        if os.path.exists(args.auth_token_file):
-            with open(args.auth_token_file) as f:
-                auth_tokens = [line.strip() for line in f if line]
-            if auth_tokens:
+            logging.info('No authorization tokens (API keys) read from command-line argument or environment')
+    elif auth_token_file:
+        if os.path.exists(auth_token_file):
+            with open(auth_token_file) as f:
+                all_auth_tokens = [line.strip() for line in f if line]
+            if all_auth_tokens:
                 logging.info('Authorization tokens (API keys) read from file')
             else:
                 logging.warning('No authorization tokens (API keys) read from file')
-    elif os.environ.get('SANDLE_AUTH_TOKEN'):
-        auth_tokens = [os.environ['SANDLE_AUTH_TOKEN']]
-        if auth_tokens:
-            logging.info('Authorization token (API key) read from environment variable')
-        else:
-            logging.warning('No authorization tokens (API keys) read from environment variable')
 
-    if not auth_tokens:
-        auth_tokens = [generate_auth_token()]
-        logging.info(f'Generated authorization token (API key): {auth_tokens[0]}')
+    if not all_auth_tokens:
+        all_auth_tokens = [generate_auth_token()]
+        logging.info(f'Generated authorization token (API key): {all_auth_tokens[0]}')
 
-    if args.allow_model:
-        allowed_models = set(args.allow_model)
-    elif os.environ.get('SANDLE_SINGLE_MODEL'):
-        allowed_models = {os.environ['SANDLE_SINGLE_MODEL']}
-    else:
-        allowed_models = None
+    all_allowed_models = None
+    if single_model:
+        all_allowed_models = set(single_model)
 
-    if allowed_models is not None:
-        logging.info(f'Allowing only the specified model(s) to be used: {allowed_models}')
+    if all_allowed_models is not None:
+        logging.info(f'Allowing only the specified model(s) to be used: {all_allowed_models}')
+
+    if not any((backend_hf, backend_llama, backend_stub)):
+        raise Exception('No backend provided')
 
     app = create_app(
-        accepted_auth_tokens=auth_tokens,
-        backend_completions_url=args.backend_completions_url,
-        auth_token_is_user=args.auth_token_is_user,
-        allowed_models=allowed_models,
+        accepted_auth_tokens=all_auth_tokens,
+        backend_hf=backend_hf,
+        backend_llama=backend_llama,
+        backend_stub=backend_stub,
+        auth_token_is_user=auth_token_is_user,
+        allowed_model_ids=all_allowed_models,
     )
-    serve(app, host=args.host, port=args.port)
+    serve(app, host=host, port=port)
 
 
 if __name__ == '__main__':
-    main()
+    main(auto_envvar_prefix='SANDLE')

@@ -5,9 +5,16 @@ from typing import Any, Dict, Optional
 
 from flask import Flask, jsonify, make_response, Response, request
 from waitress import serve
+import click
 
 
+DEFAULT_HOST = '0.0.0.0'
+DEFAULT_PORT = 8000
+DEFAULT_LOG_LEVEL = 'INFO'
 END_OF_STREAM = '[DONE]'
+
+with open('models.json') as f:
+    MODELS = json.load(f)
 
 
 def make_api_completion() -> Dict[str, Any]:
@@ -71,6 +78,13 @@ def create_app() -> Flask:
             'internal_server_error',
         )
 
+    @app.route('/v1/models')
+    def get_models():
+        return jsonify({
+            'data': MODELS,
+            'object': 'list'
+        })
+
     @app.route('/v1/completions', methods=['POST'])
     def post_completions():
         stream = request.json.get('stream', False)
@@ -89,25 +103,21 @@ def create_app() -> Flask:
     return app
 
 
-def main():
-    from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-    parser = ArgumentParser(
-        description='Run a stub implementation of OpenAI\'s /v1/completions endpoint',
-        formatter_class=ArgumentDefaultsHelpFormatter,
-    )
-    parser.add_argument('--host', default='0.0.0.0',
-                        help='Hostname or IP to serve on')
-    parser.add_argument('-p', '--port', type=int, default=8000,
-                        help='Port to serve on')
-    args = parser.parse_args()
+@click.command()
+@click.option('--host', type=str, default=DEFAULT_HOST, help='Hostname or IP to serve on')
+@click.option('-p', '--port', type=int, default=DEFAULT_PORT, help='Port to serve on')
+@click.option('-l', '--log-level', type=click.Choice(('CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG')),
+              default=DEFAULT_LOG_LEVEL, help='Logging verbosity level threshold (to stderr)')
+def main(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, log_level: str = DEFAULT_LOG_LEVEL):
+    """Run a stub implementation of OpenAI's /v1/completions endpoint"""
 
     logging.basicConfig(format='[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s',
-                        level=logging.DEBUG)
+                        level=log_level)
 
     app = create_app()
 
-    serve(app, host=args.host, port=args.port, threads=1)
+    serve(app, host=host, port=port, threads=1)
 
 
 if __name__ == '__main__':
-    main()
+    main(auto_envvar_prefix='SANDLE')

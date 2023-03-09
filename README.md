@@ -17,21 +17,32 @@ and an OpenAI-like REST API:
 
 ## Setup
 
-To build and run SANDLE using Docker Compose, do:
+To build and run SANDLE with the HuggingFace backend using Docker Compose, do:
 
 ```bash
+cp docker-compose.backend-hf.yml docker-compose.override.yml
 docker-compose up --build
 ```
 
 By default, the demo web interface and API endpoint will be bound to port 80 on the host.  Go to
 `http://localhost` in your browser to use the web interface.
+
 You must have an API key to use the web interface or API endpoint; by default, one will be
 generated and logged on startup.  If you wish to specify the accepted API key explicitly instead
 of using a randomly generated key, set the `SANDLE_AUTH_TOKEN` environment variable with the
-desired API key as the value:
+desired API key when running `docker-compose`:
 
 ```
 SANDLE_AUTH_TOKEN=ExampleAPIKey docker-compose up --build
+```
+
+If you wish to limit the models that can be used—perhaps you want to support a particularly
+large model and don't want to incur the overhead of loading it into memory more than once—then
+set the `SANDLE_SINGLE_MODEL` environment variable with the desired model name when running
+`docker-compose`:
+
+```
+SANDLE_SINGLE_MODEL=bigscience/bloom docker-compose up --build
 ```
 
 #### BRTX
@@ -64,19 +75,17 @@ API keys the application should accept can be specified in a file, as command li
 or in an environment variable.  If no API keys are specified (the default), one will be
 generated and logged on startup.
 
-For more information about specifying API keys, run the following (and then add the appropriate
-configuration to `docker-compose.yml`):
+[As in the OpenAI API](https://beta.openai.com/docs/api-reference/authentication), an API key can be used either as a "Bearer" authentication token or as a basic authentication password (with the user being the empty string).
+
+For more information about specifying API keys, run the following:
 
 ```
 docker-compose run --no-deps openai-wrapper --help
 ```
 
-[As in the OpenAI API](https://beta.openai.com/docs/api-reference/authentication), an API key can be used either as a "Bearer" authentication token or as a basic authentication password (with the user being the empty string).
-
 ### Example API calls
 
-The following command may be called against OpenAI's service or against a local Sandle service.
-For example, on OpenAI:  
+Calling OpenAI's service is similar to calling a Sandle service.  An example call to OpenAI:
 
 ```bash
 curl "https://api.openai.com/v1/completions" \
@@ -88,7 +97,7 @@ curl "https://api.openai.com/v1/completions" \
 }'
 ```
 
-and on a local Sandle deployment:
+and an equivalent call to a Sandle service:
 
 ```bash
 curl "http://YOUR_SANDLE_SERVER/v1/completions" \
@@ -100,7 +109,7 @@ curl "http://YOUR_SANDLE_SERVER/v1/completions" \
 }'
 ```
 
-Note that Sandle only supports HTTP (not HTTPS) at this time.
+Note that Sandle only comes with support for HTTP, not HTTPS.  If you need HTTPS but don't have a certificate, you can set up a reverse proxy in front of Sandle using [certbot](https://certbot.eff.org).
 
 ### API Documentation
 
@@ -113,30 +122,33 @@ This documentation is generated using the Swagger UI on our API definition file 
 
 This repository provides the following Docker services:
 
- * `backend-hf`: a service that implements a subset of [the OpenAI `/v1/completions` API](https://beta.openai.com/docs) (without authentication) using a single-threaded web server on top of HuggingFace, supporting `OPT` and `Bloom` at the time of writing.  Alone, this service is suitable for [a single user at a time](#serving-the-api-for-a-single-user-without-docker).
- * `openai-wrapper`: a service that implements a subset of [the OpenAI `/v1/models`, `/v1/models/<model>`, and `/v1/completions` APIs](https://beta.openai.com/docs) (with authentication), implementing the latter by calling the `backend-hf` service.  It uses a multi-threaded web server and is suitable for multiple users.
- * `demo`: an [nginx](https://nginx.org) web server that acts as a reverse proxy in front of the API (the `openai-wrapper` service) and serves a web interface for text completion using the proxied API.
+ * Backend services that implement a subset of [the OpenAI `/v1/completions` API](https://beta.openai.com/docs) without authentication.  These services use single-threaded web servers and are suitable for [one user at a time](#serving-the-api-for-a-single-user-without-docker).
+   * `backend-hf`: a backend on top of HuggingFace, supporting models like `OPT` and `Bloom` from the HuggingFace Hub.
+   * `backend-llama`: a backend on top of LLaMA.
+   * `backend-stub`: a stub backend for development and testing.
+ * `openai-wrapper`: a service that implements a subset of [the OpenAI `/v1/models`, `/v1/models/<model>`, and `/v1/completions` APIs](https://beta.openai.com/docs), delegating to backend services accordingly.  This service uses a multi-threaded web server and is suitable for multiple users.
+ * `demo`: a web server that provides as a reverse proxy in front of the `openai-wrapper` service as well as a web interface that uses the proxied API.
 
-These services can be run together on your local machine using [Docker Compose](https://docs.docker.com/compose/), configured in `docker-compose.yml`.
+These services can be run together on your local machine using [Docker Compose](https://docs.docker.com/compose/).  By
+default, Docker Compose will load configuration from `docker-compose.yml` and, if it is present,
+`docker-compose.override.yml`.  Alternatively, configuration files may be explicitly specified on the command line.
+For example, the following command starts Sandle with the HuggingFace backend by specifying the configuration files
+explicitly (instead of implicitly, as demonstrated at the beginning of this document):
 
-### bnb-int8
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.backend-hf.yml up --build
+```
 
-The bnb-int8 algorithm leverages newer GPU architectures to reduce the GPU memory required for inference by about half while largely maintaining the quality of outputs.  However, there is no free lunch, and in our experience, this algorithm substantially increases runtime (by a factor of two in simple cases).
+Any number of configuration files can be specified at once as long as their contents can be merged together.  For
+example, to start Sandle with both the HuggingFace and the LLaMA backend:
 
-The bnb-int8 algorithm can be used by providing the `--load-in-8bit` argument to the backend.  For example, in `docker-compose.yml`:
-
-```yaml
-services:
-  ...
-  backend-hf:
-    ...
-    command:
-      - --load-in-8bit
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.backend-hf.yml -f docker-compose.backend-llama.yml up --build
 ```
 
 ### Serving the API for a single user without Docker
 
-If you only need the API for a single user, you can run the `backend-hf` service by itself, outside of Docker.  Ensure the cuda toolkit and pytorch are installed, then install the Python requirements specified in `backend-hf/requirements.txt`, and run (for example)
+If you only need the API for a single user, you can run a backend service by itself, outside of Docker.  Ensure the appropriate dependencies are installed, then run (for example, using the HuggingFace backend):
 
 ```bash
 python backend-hf/serve-backend-hf.py --port 12349
@@ -154,10 +166,13 @@ docker build -t $USER/backend-hf backend-hf && docker run -it -p 12349:8000 $USE
 To set up a development environment for the demo web interface, install a recent version of `npm`, go to the `demo` subdirectory, and do:
 
 ```
-npm install
+npm ci
 ```
 
-Then configure your development app by copying `.env.development` to `.env.development.local` and changing the values set in the file accordingly.  In particular, make sure you set `VUE_SANDLE_HOST` and `VUE_SANDLE_PORT` to the host and port of the API implementation you are using for development.  The demo service acts as a simple reverse proxy for the API implementation provided by the openai-wrapper service, so if you wish to run an API implementation yourself, you can run `docker-compose up` as usual, then use `localhost` and the demo service port bound to your host machine (by default, port 80) as your host and address.
+Then configure your development app by copying `.env.development` to `.env.development.local` and changing the values set in the file accordingly.  In particular, make sure you set `VITE_SANDLE_URL` to the URL of the API implementation you are using for development.  The `demo` service acts as a simple reverse proxy for the API implementation provided by the openai-wrapper service, so if you wish to run an API implementation yourself, you can run `docker-compose up` as usual, then use `http://localhost` as the URL.
+
+**Note:**  By default, the demo service port is bound to port `80` on the host system.  If this port is in use or if
+you don't have access to it, you may need to override it.  To do so, add the `SANDLE_DEMO_PORT` variable to your environment with the desired port as its value, adjust `VITE_SANDLE_URL` in `.env.development.local` accordingly, and then run `docker-compose up` as usual.
 
 Once you've done that, you can start a development web server with:
 
@@ -165,28 +180,14 @@ Once you've done that, you can start a development web server with:
 npm run dev
 ```
 
-Note that in the case you used `docker-compose up` to provide an API implementation, you will now have two versions of the demo interface running: one on port 80 (by default), running from the demo service container, and one on port 3000 (by default), running via `npm` directly on your host machine.
+This server will run on port 3000 by default and hot-reload the UI when any source files change.
 
 ### Stubbing out the backend
 
-If you cannot or do not wish to run a full language model backend during testing and development, you may use the stub backend instead.  This backend provides a type-compliant implementation of the `/v1/completions` API that returns a fixed completion of `" world!"`, as if responding to the prompt `"Hello,"`.  Cute, right?
-
-Using this backend requires a small amount of additional setup.  First, start the development server as usual:
+If you cannot or do not wish to run a full language model backend during testing and development, you may use the stub backend instead.  To do so, just use the stub backend configuration file in lieu of other backend configuration:
 
 ```
-npm run dev
-```
-
-Then, instead of running `docker-compose up`, launch the `openai-wrapper` service standalone (binding to whichever port the frontend is configured to connect to, here 54355, on your local machine):
-
-```
-docker-compose build openai-wrapper && docker-compose run --rm -p 54355:8000 --no-deps openai-wrapper
-```
-
-Finally, do the following to build and run the stub backend on the default network created by Docker Compose:
-
-```
-docker run --network sandle_default --name backend-hf --rm `docker build -q backend-stub`
+docker-compose -f docker-compose.yml -f docker-compose.backend-stub.yml up --build
 ```
 
 
@@ -196,8 +197,8 @@ docker run --network sandle_default --name backend-hf --rm `docker build -q back
 
 We use flake8 to automatically check the style and syntax of the code
 and mypy to check type correctness.  To perform the checks, go into
-each of the component subdirectories (`backend-hf`, `backend-stub`,
-`openai-wrapper`) in turn and do:
+a component subdirectory (for example, `backend-hf` or `openai-wrapper`)
+and do:
 
 ```
 pip install -r dev-requirements.txt
@@ -205,7 +206,7 @@ flake8
 mypy
 ```
 
-The first line only needs to be done once per component.
+These checks are run automatically for each commit by GitHub CI.
 
 ### Property Testing
 

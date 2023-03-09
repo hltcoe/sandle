@@ -1,0 +1,32 @@
+version: '3'
+
+services:
+  openai-wrapper:
+    environment:
+      - SANDLE_BACKEND_HF=http://backend-hf:8000
+    depends_on:
+      - backend-hf
+
+  backend-hf:
+    build:
+      context: backend-hf
+      args:
+        - SENTRY_DSN
+        - SENTRY_RELEASE=${APP_NAME}@${APP_VERSION}
+    command:
+      - --port
+      - '8000'
+    environment:
+      - SANDLE_SINGLE_MODEL
+      - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    volumes:
+      - huggingface-models:/root/.cache/huggingface
+
+volumes:
+  huggingface-models:

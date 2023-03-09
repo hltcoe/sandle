@@ -21,7 +21,6 @@ services:
         - SENTRY_DSN
         - SENTRY_RELEASE=${APP_NAME}@${APP_VERSION}
     command:
-      - http://backend-hf:8000/v1/completions
       - --port
       - '8000'
       - -l
@@ -30,8 +29,6 @@ services:
     #  - --auth-token-is-user
     #  - --auth-token-file
     #  - /opt/sandle/authorized-users.txt
-    depends_on:
-      - backend-hf
     environment:
       - SANDLE_AUTH_TOKEN
       - SANDLE_SINGLE_MODEL
@@ -43,27 +40,3 @@ services:
     #    source: ./authorized-users.txt
     #    target: /opt/sandle/authorized-users.txt
     #    read_only: true
-
-  backend-hf:
-    build:
-      context: backend-hf
-      args:
-        - SENTRY_DSN
-        - SENTRY_RELEASE=${APP_NAME}@${APP_VERSION}
-    command:
-      - --port
-      - '8000'
-    environment:
-      - SANDLE_SINGLE_MODEL
-      - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}
-    restart: unless-stopped
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - capabilities: [gpu]
-    volumes:
-      - huggingface-models:/root/.cache/huggingface
-
-volumes:
-  huggingface-models:
