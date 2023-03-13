@@ -1,0 +1,11 @@
+version: '3'
+
+services:
+  backend-llama:
+    volumes:
+      - type: bind
+        source: ${SANDLE_LLAMA_BIND_SRC_DIR:-/brtx/602-nvme2/oweller2/llama}
+        target: /opt/llama
+        read_only: true
+        volume:
+          nocopy: true

@@ -28,8 +28,8 @@ services:
             - capabilities: [gpu]
     volumes:
       - type: bind
-        source: /srv/local2/oweller2/llama
-        target: /opt/resources
+        source: ${SANDLE_LLAMA_DIR:-/brtx/602-nvme2/oweller2/llama}
+        target: /opt/llama
         read_only: true
         volume:
           nocopy: true
