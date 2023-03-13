@@ -302,7 +302,7 @@ def create_app(accepted_auth_tokens: Collection[str],
               help='Base-64--encoded authorization token (API key) to accept; '
                    'can be specified more than once to accept multiple tokens. '
                    'If none are specified, one will be generated on startup.')
-@click.option('-f', '--auth-token-file', type=click.Path(dir_okay=False, path_type=Path),
+@click.option('-f', '--auth-token-file', type=click.Path(exists=True, dir_okay=False, path_type=Path),
               help='File containing base-64--encoded authorization tokens (API keys) to accept, '
                    'one per line.  Blank lines are ignored. '
                    'Auth token file is ignored if --auth-token is specified. '
