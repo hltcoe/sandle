@@ -1,10 +1,11 @@
+import itertools
 import json
 import logging
 import os
 from multiprocessing import Process, Queue
 from pathlib import Path
 from queue import Empty
-from time import time
+from time import sleep, time
 from typing import Any, Dict, List, NamedTuple, Optional, Tuple
 from uuid import uuid4
 
@@ -31,6 +32,8 @@ DEFAULT_PROMPT = 'Hello world!'
 END_OF_STREAM = '[DONE]'
 FINISH_REASON_EOS = 'stop'
 FINISH_REASON_LENGTH = 'length'
+SYNC_INTERVAL = 0.2
+DEFAULT_SYNC_FILE = Path('sandle.lock')
 
 with open('models.json') as f:
     MODELS = json.load(f)
@@ -311,7 +314,7 @@ def serve_app(model_id: str, generate_queue: Queue, **waitress_kwargs):
 
 
 @click.command()
-@click.argument('llama_dir', type=click.Path(file_okay=False, path_type=Path))
+@click.argument('llama_dir', type=click.Path(exists=True, file_okay=False, path_type=Path))
 @click.argument('model_size', type=click.Choice(tuple(model_data['id'].split('-')[-1] for model_data in MODELS)))
 @click.option('--host', type=str, default=DEFAULT_HOST, help='Hostname or IP to serve on')
 @click.option('-p', '--port', type=int, default=DEFAULT_PORT, help='Port to serve on')
@@ -319,6 +322,9 @@ def serve_app(model_id: str, generate_queue: Queue, **waitress_kwargs):
               default=DEFAULT_LOG_LEVEL, help='Logging verbosity level threshold (to stderr)')
 @click.option('--max-seq-len', type=int, default=DEFAULT_MAX_SEQ_LEN, help='Maximum sequence length')
 @click.option('--max-batch-size', type=int, default=DEFAULT_MAX_BATCH_SIZE, help='Maximum batch size')
+@click.option('--sync-file', type=click.Path(dir_okay=False, file_okay=False, path_type=Path),
+              default=DEFAULT_SYNC_FILE,
+              help='File path to use for synchronizing processes/threads (must be unique; file must not exist)')
 def main(
     llama_dir: Path,
     model_size: str,
@@ -326,7 +332,8 @@ def main(
     port: int = DEFAULT_PORT,
     log_level: str = DEFAULT_LOG_LEVEL,
     max_seq_len: int = DEFAULT_MAX_SEQ_LEN,
-    max_batch_size: int = DEFAULT_MAX_BATCH_SIZE
+    max_batch_size: int = DEFAULT_MAX_BATCH_SIZE,
+    sync_file: Path = DEFAULT_SYNC_FILE,
 ):
     """
     Run a simplified, single-threaded clone of OpenAI's /v1/completions endpoint on the LLaMA model at
@@ -350,38 +357,52 @@ def main(
     (local_rank, world_size) = setup_model_parallel()
     logging.info(f'Local rank: {local_rank}')
 
+    rank_0_generate_queue: Optional[Queue] = None
+    rank_0_server_process: Optional[Process] = None
     if local_rank == 0:
-        generate_queue = Queue()
-        server_process = Process(
+        rank_0_generate_queue = Queue()
+        rank_0_server_process = Process(
             target=serve_app,
-            args=(model_id, generate_queue),
+            args=(model_id, rank_0_generate_queue),
             kwargs=dict(host=host, port=port, threads=1),
         )
-        server_process.start()
-    else:
-        generate_queue = None
-        server_process = None
+        rank_0_server_process.start()
 
     generator = load(ckpt_dir, tokenizer_path, local_rank, world_size, max_seq_len, max_batch_size)
 
-    while True:
-        # Rank 0 gets new generate args from queue
-        if local_rank == 0:
-            generate_args_list = [generate_queue.get()]
-        else:
-            generate_args_list = [None]
-        # Rank 0 broadcasts args to other ranks
-        torch.distributed.broadcast_object_list(generate_args_list, src=0, group=get_model_parallel_group())
-        # All ranks process args
-        [generate_args] = generate_args_list
-        completed_prompts = generator.generate(*generate_args.args, **generate_args.kwargs)
-        # Rank 0 puts completions onto queue
-        if local_rank == 0:
-            generate_queue.put(completed_prompts)
+    try:
+        # Ensure sync_file is created before any rank attempts to access it
+        sync_file.touch()
 
-    if local_rank == 0:
-        generate_queue.close()
-        server_process.join()
+        for loop_num in itertools.count(start=0):
+            logging.debug(f'Starting loop {loop_num}')
+
+            # Rank 0 gets new generate args from queue
+            # We implement a crude file-based barrier to work around NCCL timeouts
+            if rank_0_generate_queue is not None:  # local_rank == 0
+                generate_args_list = [rank_0_generate_queue.get()]
+                sync_file.write_text(str(loop_num))
+            else:
+                generate_args_list = [None]
+                while sync_file.read_text() != str(loop_num):
+                    sleep(SYNC_INTERVAL)
+
+            # Rank 0 broadcasts args to other ranks
+            torch.distributed.broadcast_object_list(generate_args_list, src=0, group=get_model_parallel_group())
+
+            # All ranks process args
+            [generate_args] = generate_args_list
+            completed_prompts = generator.generate(*generate_args.args, **generate_args.kwargs)
+
+            # Rank 0 puts completions onto queue
+            if rank_0_generate_queue is not None:  # local_rank == 0
+                rank_0_generate_queue.put(completed_prompts)
+
+    finally:
+        if rank_0_generate_queue is not None and rank_0_server_process is not None:  # local_rank == 0
+            sync_file.unlink()
+            rank_0_generate_queue.close()
+            rank_0_server_process.join()
 
 
 if __name__ == '__main__':
