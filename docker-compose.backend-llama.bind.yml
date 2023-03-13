@@ -1,3 +1,10 @@
+# LLaMA backend bind-mount docker-compose configuration.  Bind-mounts a local directory containing tokenizer and model
+# files instead of assuming they are present during image build.
+# Intended to be used in tandem with the root and backend-llama configuration files.  Example:
+#
+#   SANDLE_LLAMA_BIND_SRC_DIR=/brtx/602-nvme2/oweller2/llama docker-compose \
+#     -f docker-compose.yml -f docker-compose.backend-llama.yml -f docker-compose.backend-llama.bind.yml
+
 version: '3'
 
 services:

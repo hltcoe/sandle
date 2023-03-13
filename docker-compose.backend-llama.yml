@@ -1,3 +1,15 @@
+# LLaMA backend docker-compose configuration.
+# Intended to be used in tandem with the root configuration file.  Example:
+#
+#   docker-compose -f docker-compose.yml -f docker-compose.backend-llama.yml
+#
+# Assumes tokenizer and model files are added to backend-llama/resources-not-tracked-by-git before image build.
+# May be used in tandem with docker-compose.backend-llama.bind.yml to bind-mount a directory containing tokenizer and
+# model files instead.  Example:
+#
+#   SANDLE_LLAMA_BIND_SRC_DIR=/brtx/602-nvme2/oweller2/llama docker-compose \
+#     -f docker-compose.yml -f docker-compose.backend-llama.yml -f docker-compose.backend-llama.bind.yml
+
 version: '3'
 
 services:

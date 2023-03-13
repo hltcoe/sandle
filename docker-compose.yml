@@ -1,3 +1,8 @@
+# Root docker-compose configuration.  Includes demo (UI) and OpenAI wrapper but no backends.
+# Intended to be used in tandem with one or more backend configuration files.  Example:
+#
+#   docker-compose -f docker-compose.yml -f docker-compose.backend-stub.yml
+
 version: '3'
 
 services:

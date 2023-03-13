@@ -1,3 +1,8 @@
+# Stub backend docker-compose configuration for use during development and testing.
+# Intended to be used in tandem with the root configuration file.  Example:
+#
+#   docker-compose -f docker-compose.yml -f docker-compose.backend-stub.yml
+
 version: '3'
 
 services:

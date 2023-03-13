@@ -1,3 +1,8 @@
+# HuggingFace backend docker-compose configuration.  Creates a volume to retain HF cache files across runs.
+# Intended to be used in tandem with the root configuration file.  Example:
+#
+#   docker-compose -f docker-compose.yml -f docker-compose.backend-hf.yml
+
 version: '3'
 
 services:
