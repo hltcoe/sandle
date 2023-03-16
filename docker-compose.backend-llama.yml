@@ -27,7 +27,7 @@ services:
         - SENTRY_RELEASE=${APP_NAME}@${APP_VERSION}
     command:
       - /opt/llama
-      - llama-7B
+      - 7B
       - --port
       - '8000'
     environment:
@@ -38,10 +38,3 @@ services:
         reservations:
           devices:
             - capabilities: [gpu]
-    volumes:
-      - type: bind
-        source: ${SANDLE_LLAMA_DIR:-/brtx/602-nvme2/oweller2/llama}
-        target: /opt/llama
-        read_only: true
-        volume:
-          nocopy: true
