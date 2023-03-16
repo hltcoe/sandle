@@ -61,7 +61,9 @@ def load(
     max_batch_size: int,
 ) -> LLaMA:
     checkpoints = sorted(ckpt_dir.glob('*.pth'))
-    if world_size != len(checkpoints):
+    if not checkpoints:
+        raise Exception(f'Found no checkpoints under {ckpt_dir}')
+    elif world_size != len(checkpoints):
         raise Exception(f'Started {world_size} processes but found {len(checkpoints)} (!= {world_size}) checkpoints')
     ckpt_path = checkpoints[local_rank]
     logging.info(f'Loading model from {ckpt_dir} (tokenizer: {tokenizer_path})')
