@@ -15,7 +15,7 @@ version: '3'
 services:
   openai-wrapper:
     environment:
-      - SANDLE_BACKEND_HF=http://backend-llama:8000
+      - SANDLE_BACKEND_LLAMA=http://backend-llama:8000
     depends_on:
       - backend-llama
 
