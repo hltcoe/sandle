@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.0.3-base-ubuntu20.04
+FROM nvidia/cuda:11.7.1-base-ubuntu20.04
 
 
 # Layers are approximately ordered from lowest turnover to highest
@@ -12,12 +12,12 @@ RUN curl https://repo.anaconda.com/miniconda/Miniconda3-py39_23.1.0-1-Linux-x86_
 
 # 2. Install Python dependencies
 
-RUN /opt/anaconda3/bin/conda install -y pytorch torchvision torchaudio -c pytorch && \
-    /opt/anaconda3/bin/conda install -y pip
+RUN /opt/anaconda3/bin/conda install -y pytorch pytorch-cuda=11.7 -c pytorch -c nvidia
 
 WORKDIR /opt/sandle
 COPY requirements.txt /opt/sandle/
-RUN /opt/anaconda3/bin/conda run --no-capture-output pip install -r /opt/sandle/requirements.txt
+RUN /opt/anaconda3/bin/conda install -y pip && \
+    /opt/anaconda3/bin/conda run --no-capture-output pip install -r /opt/sandle/requirements.txt
 
 
 # 3. Add large model files
