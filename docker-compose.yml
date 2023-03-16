@@ -25,23 +25,8 @@ services:
       args:
         - SENTRY_DSN
         - SENTRY_RELEASE=${APP_NAME}@${APP_VERSION}
-    command:
-      - --port
-      - '8000'
-      - -l
-      - DEBUG
-    ## Specify API keys in authorized-users.txt file: part 1/2
-    #  - --auth-token-is-user
-    #  - --auth-token-file
-    #  - /opt/sandle/authorized-users.txt
     environment:
       - SANDLE_AUTH_TOKEN
       - SANDLE_SINGLE_MODEL
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}
     restart: unless-stopped
-    ## Specify API keys in authorized-users.txt file: part 2/2
-    #volumes:
-    #  - type: bind
-    #    source: ./authorized-users.txt
-    #    target: /opt/sandle/authorized-users.txt
-    #    read_only: true

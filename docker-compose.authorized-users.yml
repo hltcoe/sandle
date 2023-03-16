@@ -1,0 +1,23 @@
+# Authorized-users docker-compose configuration.  Bind-mounts a local file (authorized-users.txt)
+# to the openai-wrapper container and uses it as the list of authorized users (auth tokens/API keys).
+# Also configures logger to add user information to logs.
+# Intended to be used in tandem with the root configuration file.  Example:
+#
+#   echo user1 > authorized-users.txt
+#   echo user2 >> authorized-users.txt
+#   docker-compose \
+#     -f docker-compose.yml -f docker-compose.authorized-users.yml -f docker-compose.backend-hf.yml
+
+version: '3'
+
+services:
+  openai-wrapper:
+    command:
+      - --auth-token-is-user
+      - --auth-token-file
+      - /opt/sandle/authorized-users.txt
+    volumes:
+      - type: bind
+        source: ./authorized-users.txt
+        target: /opt/sandle/authorized-users.txt
+        read_only: true

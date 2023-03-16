@@ -18,9 +18,6 @@ services:
       args:
         - SENTRY_DSN
         - SENTRY_RELEASE=${APP_NAME}@${APP_VERSION}
-    command:
-      - --port
-      - '8000'
     environment:
       - SANDLE_SINGLE_MODEL
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}

@@ -15,7 +15,4 @@ services:
   backend-stub:
     build:
       context: backend-stub
-    command:
-      - --port
-      - '8000'
     restart: unless-stopped

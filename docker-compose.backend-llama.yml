@@ -28,8 +28,6 @@ services:
     command:
       - /opt/llama
       - 7B
-      - --port
-      - '8000'
     environment:
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}
     restart: unless-stopped
