@@ -28,5 +28,6 @@ services:
     environment:
       - SANDLE_AUTH_TOKEN
       - SANDLE_SINGLE_MODEL
+      - SANDLE_LOG_LEVEL
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}
     restart: unless-stopped

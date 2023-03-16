@@ -15,4 +15,6 @@ services:
   backend-stub:
     build:
       context: backend-stub
+    environment:
+      - SANDLE_LOG_LEVEL
     restart: unless-stopped

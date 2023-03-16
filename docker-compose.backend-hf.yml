@@ -20,6 +20,8 @@ services:
         - SENTRY_RELEASE=${APP_NAME}@${APP_VERSION}
     environment:
       - SANDLE_SINGLE_MODEL
+      - SANDLE_LOG_LEVEL
+      - SANDLE_LOAD_IN_8BIT
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}
     restart: unless-stopped
     deploy:

@@ -88,7 +88,10 @@ def create_app(accepted_auth_tokens: Collection[str],
                 r = requests.get(backend_models_url)
                 if r.ok:
                     for model_data in r.json().get('data', []):
-                        explicit_model_data_and_backends[model_data['id']] = (model_data, backend_url)
+                        explicit_model_data_and_backends[model_data['id']] = (
+                            ModelData.parse_obj(model_data),
+                            backend_url
+                        )
                 else:
                     logging.error(f'HTTP {r.status_code} ({r.reason}) from backend at {backend_models_url}')
             except ConnectionError:
@@ -121,6 +124,9 @@ def create_app(accepted_auth_tokens: Collection[str],
         return None
 
     def get_model_data_and_backend(model_id: str) -> Optional[Tuple[ModelData, BackendUrl]]:
+        if allowed_model_ids is not None and model_id not in allowed_model_ids:
+            return None
+
         explicit_model_data_and_backend = get_explicit_model_data_and_backends().get(model_id)
         if explicit_model_data_and_backend is not None:
             return explicit_model_data_and_backend
@@ -189,11 +195,21 @@ def create_app(accepted_auth_tokens: Collection[str],
     @strip_www_authenticate_header
     @multi_auth.login_required
     def get_models():
+        model_data_and_backends = (
+            get_explicit_model_data_and_backends().values()
+            if allowed_model_ids is None
+            else [
+                model_data_and_backend
+                for model_data_and_backend
+                in (get_model_data_and_backend(model_id) for model_id in allowed_model_ids)
+                if model_data_and_backend is not None
+            ]
+        )
         return jsonify({
             'data': [
-                model_data
+                model_data.dict()
                 for (model_data, _)
-                in get_explicit_model_data_and_backends().values()
+                in model_data_and_backends
             ],
             'object': 'list',
         })
@@ -209,16 +225,10 @@ def create_app(accepted_auth_tokens: Collection[str],
             logging.debug(f'Error getting data for model {model_id}', exc_info=ex)
             model_data = None
 
-        if model_data is None:
+        if model_data is not None:
             return make_error_response(
                 404,
                 'That model does not exist',
-                'invalid_request_error',
-            )
-        elif allowed_model_ids is not None and model_data['id'] not in allowed_model_ids:
-            return make_error_response(
-                403,
-                'Not allowed to access that model',
                 'invalid_request_error',
             )
         else:

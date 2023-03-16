@@ -27,8 +27,9 @@ services:
         - SENTRY_RELEASE=${APP_NAME}@${APP_VERSION}
     command:
       - /opt/llama
-      - 7B
+      - ${SANDLE_LLAMA_MODEL_SIZE:-7B}
     environment:
+      - SANDLE_LOG_LEVEL
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}
     restart: unless-stopped
     deploy:
