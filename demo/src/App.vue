@@ -81,8 +81,8 @@
               <i
                 class="bi fs-4 ps-1"
                 :class="{
-                  'bi-check-lg': models,
-                  'text-success': models,
+                  'bi-check-lg': !!models,
+                  'text-success': !!models,
                   'bi-x-lg': !models,
                   'text-danger': !models,
                 }"
@@ -96,7 +96,7 @@
             <label class="form-label" for="model-input"> Model </label>
             <select class="form-select" id="model-input" v-model="modelId">
               <option v-for="model in models" :value="model.id" :key="model.id">
-                {{ model.family }} {{ model.size }}
+                {{ model.description }}
               </option>
             </select>
           </div>
@@ -309,29 +309,6 @@ import * as Sentry from "@sentry/vue";
 
 const DEFAULT_TEMPERATURE = 0.7;
 const BASE_64_REGEX = /^[A-Za-z0-9+/=]*$/;
-const KNOWN_MODEL_DETAILS = new Map()
-KNOWN_MODEL_DETAILS.set('bigscience/bloom-560m', {family: 'Bloom', size: '560m'})
-KNOWN_MODEL_DETAILS.set('bigscience/bloom-1b1', {family: 'Bloom', size: '1.1b'})
-KNOWN_MODEL_DETAILS.set('bigscience/bloom-1b7', {family: 'Bloom', size: '1.7b'})
-KNOWN_MODEL_DETAILS.set('bigscience/bloom-3b', {family: 'Bloom', size: '3b'})
-KNOWN_MODEL_DETAILS.set('bigscience/bloom-7b1', {family: 'Bloom', size: '7.1b'})
-KNOWN_MODEL_DETAILS.set('bigscience/bloom', {family: 'Bloom', size: '176b'})
-KNOWN_MODEL_DETAILS.set('bigscience/bloomz-560m', {family: 'Bloomz', size: '560m'})
-KNOWN_MODEL_DETAILS.set('bigscience/bloomz-1b1', {family: 'Bloomz', size: '1.1b'})
-KNOWN_MODEL_DETAILS.set('bigscience/bloomz-1b7', {family: 'Bloomz', size: '1.7b'})
-KNOWN_MODEL_DETAILS.set('bigscience/bloomz-3b', {family: 'Bloomz', size: '3b'})
-KNOWN_MODEL_DETAILS.set('bigscience/bloomz-7b1', {family: 'Bloomz', size: '7.1b'})
-KNOWN_MODEL_DETAILS.set('bigscience/bloomz', {family: 'Bloomz', size: '176b'})
-KNOWN_MODEL_DETAILS.set('EleutherAI/gpt-j-6B', {family: 'GPT-J', size: '6b'})
-KNOWN_MODEL_DETAILS.set('facebook/opt-125m', {family: 'OPT', size: '125m'})
-KNOWN_MODEL_DETAILS.set('facebook/opt-350m', {family: 'OPT', size: '350m'})
-KNOWN_MODEL_DETAILS.set('facebook/opt-1.3b', {family: 'OPT', size: '1.3b'})
-KNOWN_MODEL_DETAILS.set('facebook/opt-2.7b', {family: 'OPT', size: '2.7b'})
-KNOWN_MODEL_DETAILS.set('facebook/opt-6.7b', {family: 'OPT', size: '6.7b'})
-KNOWN_MODEL_DETAILS.set('facebook/opt-13b', {family: 'OPT', size: '13b'})
-KNOWN_MODEL_DETAILS.set('facebook/opt-30b', {family: 'OPT', size: '30b'})
-KNOWN_MODEL_DETAILS.set('facebook/opt-66b', {family: 'OPT', size: '66b'})
-const DEFAULT_MODELS = Array.from(KNOWN_MODEL_DETAILS.keys());
 
 
 function formatAxiosError(e) {
@@ -419,24 +396,13 @@ A:`,
       this.modelsAlert = null;
       try {
         this.models = await this.getModels();
-        if (!this.models || this.models.length === 0) {
-          this.models = DEFAULT_MODELS.map((modelId) => ({id: modelId}));
-        }
-        if (this.models.find((m) => m.id === previousModelId)) {
-          this.modelId = previousModelId;
-        } else {
-          this.modelId = this.models[0].id;
-        }
-        this.models.forEach(function(model) {
-          if (KNOWN_MODEL_DETAILS.has(model.id)) {
-            const modelDetails = KNOWN_MODEL_DETAILS.get(model.id);
-            model.family = modelDetails.family;
-            model.size = modelDetails.size;
+        if (this.models && this.models.length > 0) {
+          if (this.models.find((m) => m.id === previousModelId)) {
+            this.modelId = previousModelId;
           } else {
-            model.family = model.id;
-            model.size = '';
+            this.modelId = this.models[0].id;
           }
-        })
+        }
       } catch (e) {
         this.modelId = previousModelId;
         this.modelsAlert = formatAxiosError(e);

@@ -5,7 +5,7 @@ info:
   license:
     name: BSD 2-Clause with views sentence
     url: https://spdx.org/licenses/BSD-2-Clause-Views.html
-  version: 1.0.0
+  version: 1.1.0
   title: Sandle API
   contact:
     name: HLTCOE
@@ -119,8 +119,14 @@ components:
           type: array
           items:
             type: string
+        description:
+          description: >-
+            Short, unique, human-friendly description of model.
+            This option is an extension of the OpenAI API.
+          type: string
+          example: OPT 1.3B
       example: >-
-        {"id":"facebook/opt-125m","object":"model","owned_by":"facebook","permission":[]}
+        {"id":"facebook/opt-125m","object":"model","owned_by":"facebook","permission":[],"description":"OPT 125M"}
     Prompt:
       type: object
       properties:

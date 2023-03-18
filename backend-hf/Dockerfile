@@ -25,7 +25,10 @@ RUN /opt/anaconda3/bin/conda install -y pip && \
 
 # 4. Add application code
 
-COPY serve-backend-hf.py /opt/sandle/
+COPY \
+    serve-backend-hf.py \
+    models.json \
+    /opt/sandle/
 
 
 # 5. Perform remaining configuration

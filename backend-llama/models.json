@@ -1,26 +1,6 @@
 [
-  {
-    "id": "llama-7B",
-    "object": "model",
-    "owned_by": "facebook",
-    "permission": []
-  },
-  {
-    "id": "llama-13B",
-    "object": "model",
-    "owned_by": "facebook",
-    "permission": []
-  },
-  {
-    "id": "llama-30B",
-    "object": "model",
-    "owned_by": "facebook",
-    "permission": []
-  },
-  {
-    "id": "llama-65B",
-    "object": "model",
-    "owned_by": "facebook",
-    "permission": []
-  }
+  {"id": "llama-7B", "description": "LLaMA 7B", "object": "model", "owned_by": "facebook", "permission": []},
+  {"id": "llama-13B", "description": "LLaMA 13B", "object": "model", "owned_by": "facebook", "permission": []},
+  {"id": "llama-30B", "description": "LLaMA 30B", "object": "model", "owned_by": "facebook", "permission": []},
+  {"id": "llama-65B", "description": "LLaMA 65B", "object": "model", "owned_by": "facebook", "permission": []}
 ]

@@ -33,6 +33,9 @@ END_OF_STREAM = '[DONE]'
 FINISH_REASON_EOS = 'stop'
 FINISH_REASON_LENGTH = 'length'
 
+with open('models.json') as f:
+    MODELS = json.load(f)
+
 
 MaxMemoryDict = Dict[Union[int, str], Union[int, str]]
 
@@ -102,15 +105,15 @@ class LM:
 
     def __init__(self,
                  offload_dir: Optional[Path] = None,
-                 single_model: Optional[str] = None,
+                 preload_model: Optional[str] = None,
                  load_in_8bit: bool = False):
         self.offload_dir = offload_dir
         self.load_in_8bit = load_in_8bit
 
         self.models = {}
         self.main_device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        if single_model is not None:
-            self.get_tokenizer_and_model(single_model)
+        if preload_model is not None:
+            self.get_tokenizer_and_model(preload_model)
 
     def get_tokenizer_and_model(self, model_id: str) -> Tuple[PreTrainedTokenizer, PreTrainedModel]:
         if model_id not in self.models:
@@ -311,11 +314,11 @@ def make_error_response(status: int, message: str, error_type: str,
 
 
 def create_app(offload_dir: Optional[Path] = None,
-               single_model: Optional[str] = None,
+               preload_model: Optional[str] = None,
                load_in_8bit: bool = False) -> Flask:
     lm = LM(
         offload_dir=offload_dir,
-        single_model=single_model,
+        preload_model=preload_model,
         load_in_8bit=load_in_8bit,
     )
 
@@ -347,6 +350,13 @@ def create_app(offload_dir: Optional[Path] = None,
             'The server encountered an internal error',
             'internal_server_error',
         )
+
+    @app.route('/v1/models')
+    def get_models():
+        return jsonify({
+            'data': MODELS,
+            'object': 'list'
+        })
 
     @app.route('/v1/completions', methods=['POST'])
     def post_completions():
@@ -487,7 +497,7 @@ def main(
 
     app = create_app(
         offload_dir=offload_dir,
-        single_model=single_model,
+        preload_model=single_model,
         load_in_8bit=load_in_8bit,
     )
 

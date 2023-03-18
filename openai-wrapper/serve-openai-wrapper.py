@@ -2,16 +2,17 @@ import logging
 import os
 import secrets
 from base64 import b64encode
-from functools import lru_cache, wraps
+from functools import wraps
+from math import inf
 from pathlib import Path
-from typing import Any, Dict, Collection, List, Literal, Optional, Tuple
+from time import time
+from typing import Any, Dict, Collection, List, Literal, Optional, Tuple, TypedDict
 
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
 from flask import Flask, jsonify, make_response, Response, request
 from flask_cors import CORS
 from flask_httpauth import HTTPBasicAuth, HTTPTokenAuth, MultiAuth
-from huggingface_hub import HfApi
 from pydantic import BaseModel
 import requests
 from requests.exceptions import ConnectionError, Timeout
@@ -19,14 +20,21 @@ from waitress import serve
 import click
 
 
-BackendUrl = str
-
-
 class ModelData(BaseModel):
     id: str
     object: Literal['model']
     owned_by: str
     permission: List
+    description: str
+
+
+BackendUrl = str
+ModelDataAndBackend = Tuple[ModelData, BackendUrl]
+
+
+class BackendModelsCache(TypedDict):
+    value: Dict[str, ModelDataAndBackend]
+    updated: float
 
 
 DEFAULT_HOST = '0.0.0.0'
@@ -34,6 +42,7 @@ DEFAULT_PORT = 8000
 DEFAULT_LOG_LEVEL = 'INFO'
 
 END_OF_STREAM = '[DONE]'
+BACKEND_MODELS_CACHE_TTL = 1
 
 
 def generate_auth_token(password_length: int = 16) -> str:
@@ -74,64 +83,43 @@ def create_app(accepted_auth_tokens: Collection[str],
                backend_stub: Optional[BackendUrl] = None,
                auth_token_is_user: bool = False,
                allowed_model_ids: Optional[Collection[str]] = None) -> Flask:
-    @lru_cache
-    def get_explicit_model_data_and_backends() -> Dict[str, Tuple[ModelData, BackendUrl]]:
-        explicit_backend_urls = [
+    backend_models_cache = BackendModelsCache(value={}, updated=-inf)
+
+    def get_model_data_and_backends() -> Dict[str, ModelDataAndBackend]:
+        if time() < backend_models_cache['updated'] + BACKEND_MODELS_CACHE_TTL:
+            return backend_models_cache['value']
+
+        backend_urls = [
             backend_url
-            for backend_url in (backend_llama, backend_stub)
+            for backend_url in (backend_hf, backend_llama, backend_stub)
             if backend_url is not None
         ]
-        explicit_model_data_and_backends: Dict[str, Tuple[ModelData, BackendUrl]] = {}
-        for backend_url in explicit_backend_urls:
+        model_data_and_backends: Dict[str, ModelDataAndBackend] = {}
+        for backend_url in backend_urls:
             backend_models_url = backend_url + '/v1/models'
             try:
                 r = requests.get(backend_models_url)
                 if r.ok:
                     for model_data in r.json().get('data', []):
-                        explicit_model_data_and_backends[model_data['id']] = (
-                            ModelData.parse_obj(model_data),
-                            backend_url
-                        )
+                        model_id = model_data['id']
+                        if allowed_model_ids is None or model_id in allowed_model_ids:
+                            model_data_and_backends[model_id] = (
+                                ModelData.parse_obj(model_data),
+                                backend_url
+                            )
                 else:
                     logging.error(f'HTTP {r.status_code} ({r.reason}) from backend at {backend_models_url}')
             except ConnectionError:
                 logging.exception(f'Error connecting to backend at {backend_models_url}')
             except Timeout:
                 logging.exception(f'Timeout connecting to backend at {backend_models_url}')
-        return explicit_model_data_and_backends
 
-    @lru_cache
-    def get_implicit_model_data_and_backend(model_id: str) -> Optional[Tuple[ModelData, BackendUrl]]:
-        if backend_hf is not None:
-            api = HfApi()
-            model_infos = [
-                model_info
-                for model_info in api.list_models(search=model_id)
-                if model_info.modelId == model_id
-            ]
-            if model_infos:
-                [model_info] = model_infos
-                return (
-                    ModelData(
-                        id=model_info.modelId,
-                        object='model',
-                        owned_by=model_info.author if model_info.author else '',
-                        permission=[],
-                    ),
-                    backend_hf,
-                )
+        backend_models_cache['updated'] = time()
+        backend_models_cache['value'] = model_data_and_backends
+        return model_data_and_backends
 
-        return None
-
-    def get_model_data_and_backend(model_id: str) -> Optional[Tuple[ModelData, BackendUrl]]:
-        if allowed_model_ids is not None and model_id not in allowed_model_ids:
-            return None
-
-        explicit_model_data_and_backend = get_explicit_model_data_and_backends().get(model_id)
-        if explicit_model_data_and_backend is not None:
-            return explicit_model_data_and_backend
-        else:
-            return get_implicit_model_data_and_backend(model_id)
+    def get_model_data_and_backend(model_id: str) -> Optional[ModelDataAndBackend]:
+        return get_model_data_and_backends().get(model_id)
 
     app = Flask(__name__)
 
@@ -195,21 +183,11 @@ def create_app(accepted_auth_tokens: Collection[str],
     @strip_www_authenticate_header
     @multi_auth.login_required
     def get_models():
-        model_data_and_backends = (
-            get_explicit_model_data_and_backends().values()
-            if allowed_model_ids is None
-            else [
-                model_data_and_backend
-                for model_data_and_backend
-                in (get_model_data_and_backend(model_id) for model_id in allowed_model_ids)
-                if model_data_and_backend is not None
-            ]
-        )
         return jsonify({
             'data': [
                 model_data.dict()
                 for (model_data, _)
-                in model_data_and_backends
+                in get_model_data_and_backends().values()
             ],
             'object': 'list',
         })
@@ -271,7 +249,7 @@ def create_app(accepted_auth_tokens: Collection[str],
             model_data_and_backend = None
 
         if model_data_and_backend is not None:
-            (model_data, backend_url) = model_data_and_backend
+            (_, backend_url) = model_data_and_backend
             stream = request_json.get('stream', False)
             if auth_token_is_user:
                 user = multi_auth.current_user()
