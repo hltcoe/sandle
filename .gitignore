@@ -1,5 +1,6 @@
 *.code-workspace
-fuzz-test-output
+fuzz-test/output
+fuzz-test/restler-fuzzer
 authorized-users.txt
 docker-compose.override.yml
 

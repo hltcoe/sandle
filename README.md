@@ -278,35 +278,37 @@ pytest
 
 ### Fuzz Testing
 
-To perform fuzz testing using the Microsoft RESTler tool in Docker:
+To perform fuzz testing using the Microsoft RESTler tool in Docker,
+do the following.
 
-First, bring up the Sandle system using the test authentication
-token:
-
-```
-SANDLE_AUTH_TOKEN=dGVzdA== docker-compose up --build
-```
-
-Then, run `run-fuzz-test-docker.bash` to build the `restler` Docker
-image if it does not exist and run RESTler on the API
-specification in `docs/swagger.yaml`:
+First, bring up the Sandle system with the HuggingFace backend and
+a fixed authentication token:
 
 ```
-bash run-fuzz-test-docker.bash
+SANDLE_AUTH_TOKEN=dGVzdA== docker-compose -f docker-compose.yml -f docker-compose.backend-hf.yml up --build
 ```
 
-This script will create the directory `fuzz-test-output`, bind it to
+Then, run `fuzz-test/run.bash` with that same authentication token to
+build the `restler-fuzzer` Docker image if it does not exist and run
+RESTler on the API specification in `docs/swagger.yaml`:
+
+```
+bash fuzz-test/run.bash dGVzdA==
+```
+
+This script will create the directory `fuzz-test/output`, bind it to
 the RESTler Docker container, and write the output for each step of the
 testing procedure to the appropriately named subdirectory of
-`fuzz-test-output`.  Additionally, at the end of each step, the
-contents of `fuzz-test-output/STEP/ResponseBuckets/runSummary.json`
+`fuzz-test/output`.  Additionally, at the end of each step, the
+contents of `fuzz-test/output/STEP/ResponseBuckets/runSummary.json`
 (with `STEP` replaced with the step name) will be printed to the
 console.  If after any step the number of failures reported in that
 file is greater than zero, the test procedure will terminate.
 
 ### Benchmarking
 
-Example runtime test using the Apache Bench tool (installed by default on OS X):
+Example runtime test using the Apache Bench tool
+(installed by default on OS X):
 
 ```
 ab -n 10 -c 1 -s 60 -p qa.txt -T application/json -A :YOUR_API_KEY -m POST http://YOUR_SANDLE_SERVER/v1/completions

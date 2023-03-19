@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
-token = 'dGVzdA=='  # base-64 encoding of "test"
+import sys
+assert len(sys.argv) == 2
+token = sys.argv[1]
 print('{"app": {}}')
 print(f'Authorization: Bearer {token}')

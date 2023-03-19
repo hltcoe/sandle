@@ -1,6 +1,14 @@
 #!/bin/sh
 
 set -e
+set -u
+
+if [ $# -ne 1 ]
+then
+    echo "Usage: $0 FUZZ_TEST_TOKEN" >&2
+    exit 1
+fi
+FUZZ_TEST_TOKEN="$1"
 
 PYTHON=python3
 RESTLER=/RESTler/restler/Restler
@@ -18,7 +26,7 @@ do
         --settings Compile/engine_settings.json \
         --no_ssl \
         --host demo \
-        --token_refresh_command "$PYTHON /generate-fuzz-test-token.py" \
+        --token_refresh_command "$PYTHON /generate-token.py $FUZZ_TEST_TOKEN" \
         --token_refresh_interval 60
-    $PYTHON /check-fuzz-test-output.py $subcmd
+    $PYTHON /check-output.py $subcmd
 done
