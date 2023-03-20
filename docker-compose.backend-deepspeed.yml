@@ -1,28 +1,31 @@
-# HuggingFace backend docker-compose configuration.
-# Creates a volume to retain cached model files across runs.
+# DeepSpeed backend docker-compose configuration.
+# Creates a volume to retain cached extension files across runs.
 # Intended to be used in tandem with the root configuration file.  Example:
 #
-#   docker-compose -f docker-compose.yml -f docker-compose.backend-hf.yml
+#   docker-compose -f docker-compose.yml -f docker-compose.backend-deepspeed.yml
 
 version: '3'
 
 services:
   openai-wrapper:
     environment:
-      - SANDLE_BACKEND_HF=http://backend-hf:8000
+      - SANDLE_BACKEND_DEEPSPEED=http://backend-deepspeed:8000
     depends_on:
-      - backend-hf
+      - backend-deepspeed
 
-  backend-hf:
+  backend-deepspeed:
     build:
-      context: backend-hf
+      context: backend-deepspeed
       args:
         - SENTRY_DSN
         - SENTRY_RELEASE=${APP_NAME}@${APP_VERSION}
+    command:
+      - ${SANDLE_DEEPSPEED_MODEL:-bigscience/bloom-560m}
+      - --model-path
+      - /root/.cache/mii_models
     environment:
       - SANDLE_SINGLE_MODEL
       - SANDLE_LOG_LEVEL
-      - SANDLE_LOAD_IN_8BIT
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}
     restart: unless-stopped
     deploy:
@@ -31,7 +34,7 @@ services:
           devices:
             - capabilities: [gpu]
     volumes:
-      - huggingface-models:/root/.cache/huggingface
+      - deepspeed-cache:/root/.cache
 
 volumes:
-  huggingface-models:
+  deepspeed-cache:

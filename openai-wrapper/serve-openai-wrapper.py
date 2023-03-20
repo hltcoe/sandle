@@ -6,7 +6,7 @@ from functools import wraps
 from math import inf
 from pathlib import Path
 from time import time
-from typing import Any, Dict, Collection, List, Literal, Optional, Tuple, TypedDict
+from typing import Any, Dict, Collection, List, Literal, Optional, Sequence, Tuple, TypedDict
 
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
@@ -78,9 +78,7 @@ def make_error_response(status: int, message: str, error_type: str,
 
 
 def create_app(accepted_auth_tokens: Collection[str],
-               backend_hf: Optional[BackendUrl] = None,
-               backend_llama: Optional[BackendUrl] = None,
-               backend_stub: Optional[BackendUrl] = None,
+               backends: Sequence[BackendUrl],
                auth_token_is_user: bool = False,
                allowed_model_ids: Optional[Collection[str]] = None) -> Flask:
     backend_models_cache = BackendModelsCache(value={}, updated=-inf)
@@ -91,7 +89,7 @@ def create_app(accepted_auth_tokens: Collection[str],
 
         backend_urls = [
             backend_url
-            for backend_url in (backend_hf, backend_llama, backend_stub)
+            for backend_url in backends
             if backend_url is not None
         ]
         model_data_and_backends: Dict[str, ModelDataAndBackend] = {}
@@ -283,6 +281,7 @@ def create_app(accepted_auth_tokens: Collection[str],
 @click.command()
 @click.option('--backend-hf', type=BackendUrl, help='HuggingFace backend URL')
 @click.option('--backend-llama', type=BackendUrl, help='LLaMA backend URL')
+@click.option('--backend-deepspeed', type=BackendUrl, help='DeepSpeed backend URL')
 @click.option('--backend-stub', type=BackendUrl, help='Stub backend URL')
 @click.option('--host', type=str, default=DEFAULT_HOST, help='Hostname or IP to serve on')
 @click.option('-p', '--port', type=int, default=DEFAULT_PORT, help='Port to serve on')
@@ -308,6 +307,7 @@ def create_app(accepted_auth_tokens: Collection[str],
 def main(
     backend_hf: Optional[BackendUrl] = None,
     backend_llama: Optional[BackendUrl] = None,
+    backend_deepspeed: Optional[BackendUrl] = None,
     backend_stub: Optional[BackendUrl] = None,
     host: str = DEFAULT_HOST,
     port: int = DEFAULT_PORT,
@@ -357,14 +357,17 @@ def main(
     if all_allowed_models is not None:
         logging.info(f'Allowing only the specified model(s) to be used: {all_allowed_models}')
 
-    if not any((backend_hf, backend_llama, backend_stub)):
+    backends = [
+        backend
+        for backend in (backend_hf, backend_llama, backend_deepspeed, backend_stub)
+        if backend
+    ]
+    if not backends:
         raise Exception('No backend provided')
 
     app = create_app(
         accepted_auth_tokens=all_auth_tokens,
-        backend_hf=backend_hf,
-        backend_llama=backend_llama,
-        backend_stub=backend_stub,
+        backends=backends,
         auth_token_is_user=auth_token_is_user,
         allowed_model_ids=all_allowed_models,
     )

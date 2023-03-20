@@ -8,7 +8,9 @@ jobs:
       matrix:
         subdir:
           - demo
+          - backend-deepspeed
           - backend-hf
+          - backend-llama
           - backend-stub
           - openai-wrapper
 

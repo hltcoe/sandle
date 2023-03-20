@@ -151,7 +151,7 @@ docker-compose -f docker-compose.yml -f docker-compose.backend-hf.yml -f docker-
 If you only need the API for a single user, you can run a backend service by itself, outside of Docker.  Ensure the appropriate dependencies are installed, then run (for example, using the HuggingFace backend):
 
 ```bash
-python backend-hf/serve-backend-hf.py --port 12349
+python backend-hf/serve-backend.py --port 12349
 ```
 
 to serve the partial `/v1/completions` API on port 12349 on your local host.  The equivalent Docker usage would be (approximately):
@@ -249,7 +249,7 @@ the requirements (CUDA, PyTorch, and the requirements specified in
 `requirements.txt`), then run:
 
 ```
-CUDA_VISIBLE_DEVICES=0 python serve-backend-hf.py
+CUDA_VISIBLE_DEVICES=0 python serve-backend.py
 ```
 
 Then, you can test that the service is up:
