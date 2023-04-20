@@ -24,7 +24,6 @@ services:
       - --model-path
       - /root/.cache/mii_models
     environment:
-      - SANDLE_SINGLE_MODEL
       - SANDLE_LOG_LEVEL
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}
     restart: unless-stopped
