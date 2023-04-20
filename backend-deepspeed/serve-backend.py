@@ -283,7 +283,7 @@ def main(
         mii.deploy(
             task='text-generation',
             model=model_id,
-            model_path=model_path,
+            model_path=str(model_path),
             deployment_name=deployment_name,
             mii_config=mii_config,
         )
