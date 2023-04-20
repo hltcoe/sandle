@@ -14,7 +14,7 @@ RUN curl https://repo.anaconda.com/miniconda/Miniconda3-py39_23.1.0-1-Linux-x86_
 
 RUN /opt/anaconda3/bin/conda install -y pytorch=1.13 pytorch-cuda=11.7 -c pytorch -c nvidia
 
-RUN git clone -b v0.8.2 https://github.com/microsoft/DeepSpeed.git /opt/deepspeed-src && \
+RUN git clone -b v0.9.0 https://github.com/microsoft/DeepSpeed.git /opt/deepspeed-src && \
     cd /opt/deepspeed-src && \
     /opt/anaconda3/bin/conda install -y pip && \
     /opt/anaconda3/bin/conda run --no-capture-output pip install /opt/deepspeed-src && \
