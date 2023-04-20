@@ -19,7 +19,7 @@ RUN git clone -b v0.9.0 https://github.com/microsoft/DeepSpeed.git /opt/deepspee
     /opt/anaconda3/bin/conda install -y pip && \
     /opt/anaconda3/bin/conda run --no-capture-output pip install /opt/deepspeed-src && \
     rm -rf /opt/deepspeed-src && \
-    /opt/anaconda3/bin/conda run --no-capture-output pip install deepspeed-mii
+    /opt/anaconda3/bin/conda run --no-capture-output pip install deepspeed-mii triton==1.0.0
 
 WORKDIR /opt/sandle
 COPY requirements.txt /opt/sandle/
