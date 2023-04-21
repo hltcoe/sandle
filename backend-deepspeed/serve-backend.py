@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 from pathlib import Path
 from time import time
 from typing import Any, Dict, List, NamedTuple, Optional, Tuple
@@ -25,6 +26,7 @@ DEFAULT_PROMPT = 'Hello world!'
 END_OF_STREAM = '[DONE]'
 FINISH_REASON_EOS = 'stop'
 FINISH_REASON_LENGTH = 'length'
+BAD_DEPLOYMENT_CHAR_RE = re.compile(r'\W')
 
 with open('models.json') as f:
     MODELS = json.load(f)
@@ -276,7 +278,7 @@ def main(
     )
     sentry_sdk.set_tag('component', 'backend-deepspeed')
 
-    deployment_name = f'{model_id}_deployment'
+    deployment_name = BAD_DEPLOYMENT_CHAR_RE.sub('_', f'{model_id}_deployment')
     mii_config = {"tensor_parallel": 1, "dtype": "fp16"}
 
     try:
