@@ -34,7 +34,7 @@ RUN /opt/anaconda3/bin/conda install -y pip && \
 
 COPY \
     docker-command.bash \
-    serve-backend.py \
+    main.py \
     models.json \
     /opt/sandle/
 

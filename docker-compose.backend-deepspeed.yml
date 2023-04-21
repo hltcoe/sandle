@@ -19,11 +19,9 @@ services:
       args:
         - SENTRY_DSN
         - SENTRY_RELEASE=${APP_NAME}@${APP_VERSION}
-    command:
-      - ${SANDLE_DEEPSPEED_MODEL:-bigscience/bloom-560m}
-      - --model-path
-      - /root/.cache/mii_models
     environment:
+      - SANDLE_MODEL_ID=${SANDLE_DEEPSPEED_MODEL:-bigscience/bloom-560m}
+      - SANDLE_MODEL_PATH=/root/.cache/mii_models
       - SANDLE_LOG_LEVEL
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}
     restart: unless-stopped

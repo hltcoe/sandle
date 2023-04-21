@@ -1,4 +1,5 @@
 click
-flask
-sentry-sdk[flask]
-waitress
+fastapi
+pydantic
+sentry-sdk[fastapi]
+uvicorn[standard]
