@@ -34,8 +34,11 @@ RUN /opt/anaconda3/bin/conda install -y pip && \
 
 COPY \
     docker-command.bash \
-    main.py \
     models.json \
+    __init__.py \
+    backend_deepspeed.py \
+    main.py \
+    serve-mii.py \
     /opt/sandle/
 
 

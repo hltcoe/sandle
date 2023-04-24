@@ -3,11 +3,8 @@ Run a simplified, single-threaded clone of OpenAI's /v1/completions endpoint on 
 in DeepSpeed.
 """
 
-from enum import Enum
 import json
 import logging
-import re
-from pathlib import Path
 from time import time
 from typing import List, Literal, Optional, Tuple, Union
 from uuid import uuid4
@@ -15,8 +12,10 @@ from uuid import uuid4
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 import mii
-from pydantic import BaseModel, BaseSettings, Field
+from pydantic import BaseModel, Field, validator
 import sentry_sdk
+
+from backend_deepspeed import DEPLOYMENT_NAME, MODELS, settings
 
 
 DEFAULT_MAX_TOKENS = 16
@@ -27,41 +26,6 @@ DEFAULT_PROMPT = 'Hello world!'
 END_OF_STREAM = '[DONE]'
 FINISH_REASON_EOS = 'stop'
 FINISH_REASON_LENGTH = 'length'
-BAD_DEPLOYMENT_CHAR_RE = re.compile(r'\W')
-
-with open('models.json') as f:
-    MODELS = json.load(f)
-
-
-ModelId = Enum('ModelId', {model_data['id']: model_data['id'] for model_data in MODELS})
-
-
-class LogLevel(str, Enum):
-    @classmethod
-    def _missing_(cls, value):
-        return cls.__members__[value.upper()]
-
-    CRITICAL = 'CRITICAL'
-    ERROR = 'ERROR'
-    WARNING = 'WARNING'
-    INFO = 'INFO'
-    DEBUG = 'DEBUG'
-
-
-class Settings(BaseSettings):
-    model_id: ModelId
-    model_path: Optional[Path] = None
-    log_level: LogLevel = LogLevel.INFO
-
-    class Config:
-        env_prefix = 'sandle_'
-        env_file = '.env'
-
-
-settings = Settings()
-
-
-ConfiguredModelId = Enum('ConfiguredModelId', {settings.model_id.name: settings.model_id.name})
 
 
 def generate_response_id() -> str:
@@ -127,7 +91,7 @@ class Completions(BaseModel):
 
 class CompletionsParams(BaseModel):
     max_tokens: int = DEFAULT_MAX_TOKENS
-    model: ConfiguredModelId = ConfiguredModelId[settings.model_id.name]
+    model: str = settings.model_id
     prompt: str = DEFAULT_PROMPT
     stop: Union[str, List[str]] = Field(default_factory=lambda: [])
     n: int = DEFAULT_NUM_RETURN_SEQUENCES
@@ -137,11 +101,17 @@ class CompletionsParams(BaseModel):
     top_p: float = DEFAULT_TOP_P
     user: Optional[str] = None
 
+    @validator('model')
+    def model_is_loaded(cls, v, **kwargs):
+        if v != settings.model_id:
+            raise ValueError(f'Requested model {v} but only {settings.model_id} is loaded')
+        return v
+
 
 @app.get('/v1/models')
 def get_models() -> ModelList:
     return ModelList(
-        data=[ModelData(**model_data) for model_data in MODELS if model_data['id'] == settings.model_id.name],
+        data=[ModelData(**model_data) for model_data in MODELS if model_data['id'] == settings.model_id],
     )
 
 
@@ -173,7 +143,7 @@ def post_completions(params: CompletionsParams):
     response_id = generate_response_id()
     created = get_timestamp()
     prompts = [params.prompt] * params.n
-    generator = mii.mii_query_handle(deployment_name)
+    generator = mii.mii_query_handle(DEPLOYMENT_NAME)
     result = generator.query(
         {'query': prompts},
         max_new_tokens=params.max_tokens, do_sample=not params.greedy_decoding, top_p=params.top_p,
@@ -182,7 +152,7 @@ def post_completions(params: CompletionsParams):
     api_completions = Completions(
         id=response_id,
         created=created,
-        model_id=settings.model_id.name,
+        model_id=settings.model_id,
         choices=[
             CompletionsChoice.parse_truncation(
                 truncate_at_stops(raw_completion_text[len(params.prompt):], stop_strings=stops),
@@ -208,15 +178,4 @@ logging.basicConfig(format='[%(asctime)s] [%(levelname)s] [%(process)d] [%(name)
 sentry_sdk.init(traces_sample_rate=0.1)
 sentry_sdk.set_tag('component', 'backend-deepspeed')
 
-deployment_name = BAD_DEPLOYMENT_CHAR_RE.sub('_', f'{settings.model_id.name}_deployment')
 mii_config = {"tensor_parallel": 1, "dtype": "fp16"}
-
-mii.deploy(
-    task='text-generation',
-    model=settings.model_id.name,
-    model_path=str(settings.model_path) if settings.model_path is not None else None,
-    deployment_name=deployment_name,
-    mii_config=mii_config,
-)
-
-#    mii.terminate(deployment_name)

@@ -4,7 +4,7 @@
 #
 #   docker-compose -f docker-compose.yml -f docker-compose.backend-deepspeed.yml
 
-version: '3'
+version: '3.7'
 
 services:
   openai-wrapper:
@@ -24,6 +24,7 @@ services:
       - SANDLE_MODEL_PATH=/root/.cache/mii_models
       - SANDLE_LOG_LEVEL
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}
+    init: true
     restart: unless-stopped
     deploy:
       resources:

@@ -1,6 +1,18 @@
 import mii
-mii_configs = {"tensor_parallel": 1, "dtype": "fp16"}
-mii.deploy(task='text-generation',
-           model="bigscience/bloom-560m",
-           deployment_name="bloom560m_deployment",
-           mii_config=mii_configs)
+import sentry_sdk
+
+from backend_deepspeed import DEPLOYMENT_NAME, settings
+
+
+sentry_sdk.init(traces_sample_rate=0.1)
+sentry_sdk.set_tag('component', 'backend-deepspeed-worker')
+
+mii_config = {'tensor_parallel': 1, 'dtype': 'fp16'}
+
+mii.deploy(
+    task='text-generation',
+    model=settings.model_id,
+    model_path=str(settings.model_path) if settings.model_path is not None else None,
+    deployment_name=DEPLOYMENT_NAME,
+    mii_config=mii_config,
+)
