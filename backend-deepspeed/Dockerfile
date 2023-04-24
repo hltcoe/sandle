@@ -32,14 +32,7 @@ RUN /opt/anaconda3/bin/conda install -y pip && \
 
 # 4. Add application code
 
-COPY \
-    docker-command.bash \
-    models.json \
-    __init__.py \
-    backend_deepspeed.py \
-    main.py \
-    serve-mii.py \
-    /opt/sandle/
+COPY backend_deepspeed /opt/sandle
 
 
 # 5. Perform remaining configuration

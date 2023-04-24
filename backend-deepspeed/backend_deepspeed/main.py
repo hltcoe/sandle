@@ -15,7 +15,7 @@ import mii
 from pydantic import BaseModel, Field, validator
 import sentry_sdk
 
-from backend_deepspeed import DEPLOYMENT_NAME, MODELS, settings
+from .common import DEPLOYMENT_NAME, MODELS, settings
 
 
 DEFAULT_MAX_TOKENS = 16

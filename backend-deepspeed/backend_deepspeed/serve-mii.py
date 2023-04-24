@@ -1,7 +1,7 @@
 import mii
 import sentry_sdk
 
-from backend_deepspeed import DEPLOYMENT_NAME, settings
+from .common import DEPLOYMENT_NAME, settings
 
 
 sentry_sdk.init(traces_sample_rate=0.1)
