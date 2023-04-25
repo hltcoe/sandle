@@ -4,6 +4,8 @@
 set -e
 set -u
 
-ds_report
-python serve-mii.py &
-uvicorn --host 0.0.0.0 "$@" main:app
+CONDA_RUN="/opt/anaconda3/bin/conda run --no-capture-output"
+
+$CONDA_RUN ds_report
+$CONDA_RUN python serve-mii.py &
+$CONDA_RUN uvicorn --host 0.0.0.0 "$@" main:app
