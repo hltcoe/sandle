@@ -5,5 +5,5 @@ set -e
 set -u
 
 ds_report
-python &
+python serve-mii.py &
 uvicorn --host 0.0.0.0 "$@" main:app

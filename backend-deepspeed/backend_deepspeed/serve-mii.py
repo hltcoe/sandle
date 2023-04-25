@@ -1,8 +1,13 @@
+import logging
+
 import mii
 import sentry_sdk
 
-from .common import DEPLOYMENT_NAME, settings
+from util import DEPLOYMENT_NAME, settings
 
+
+logging.basicConfig(format='[%(asctime)s] [%(levelname)s] [%(process)d] [%(name)s] %(message)s',
+                    level=settings.log_level)
 
 sentry_sdk.init(traces_sample_rate=0.1)
 sentry_sdk.set_tag('component', 'backend-deepspeed-worker')
