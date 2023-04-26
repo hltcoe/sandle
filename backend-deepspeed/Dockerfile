@@ -30,7 +30,11 @@ RUN /opt/anaconda3/bin/conda run --no-capture-output pip install -r /opt/sandle/
 
 # 4. Add application code
 
-COPY backend_deepspeed /opt/sandle
+COPY \
+    docker-command.bash \
+    main.py \
+    models.json \
+    /opt/sandle/
 
 
 # 5. Perform remaining configuration

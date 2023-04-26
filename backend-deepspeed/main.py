@@ -5,6 +5,7 @@ in DeepSpeed.
 
 import json
 import logging
+from pathlib import Path
 from time import time
 from typing import List, Literal, Optional, Tuple, Union
 from uuid import uuid4
@@ -12,10 +13,8 @@ from uuid import uuid4
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 import mii
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, BaseSettings, Field, validator
 import sentry_sdk
-
-from util import DEPLOYMENT_NAME, MODELS, settings
 
 
 DEFAULT_MAX_TOKENS = 16
@@ -23,9 +22,39 @@ DEFAULT_TEMPERATURE = 1.
 DEFAULT_TOP_P = 1.
 DEFAULT_NUM_RETURN_SEQUENCES = 1
 DEFAULT_PROMPT = 'Hello world!'
+DEPLOYMENT_NAME = 'sandle_deployment'
 END_OF_STREAM = '[DONE]'
 FINISH_REASON_EOS = 'stop'
 FINISH_REASON_LENGTH = 'length'
+
+
+with open('models.json') as f:
+    MODELS = json.load(f)
+
+
+class Settings(BaseSettings):
+    model_id: str
+    model_path: Optional[Path] = None
+    log_level: Literal['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'] = 'INFO'
+
+    @validator('model_id')
+    def model_id_is_configured(cls, v, **kwargs):
+        if v not in [model_data['id'] for model_data in MODELS]:
+            raise ValueError(f'Model {v} specified in settings is not configured in models.json.')
+        return v
+
+    class Config:
+        env_prefix = 'sandle_'
+        env_file = '.env'
+
+
+settings = Settings()
+
+logging.basicConfig(format='[%(asctime)s] [%(levelname)s] [%(process)d] [%(name)s] %(message)s',
+                    level=settings.log_level)
+
+sentry_sdk.init(traces_sample_rate=0.1)
+sentry_sdk.set_tag('component', 'backend-deepspeed')
 
 
 def generate_response_id() -> str:
@@ -44,9 +73,6 @@ def truncate_at_stops(text: str, stop_strings: List[str]) -> Tuple[str, bool]:
             text = text[:index]
             truncated = True
     return (text, truncated)
-
-
-app = FastAPI()
 
 
 class ModelData(BaseModel):
@@ -118,6 +144,9 @@ def mii_query(params: CompletionsParams) -> List[str]:
     return result.response
 
 
+app = FastAPI()
+
+
 @app.get('/v1/models')
 def get_models() -> ModelList:
     return ModelList(
@@ -174,8 +203,10 @@ def post_completions(params: CompletionsParams):
         return api_completions
 
 
-logging.basicConfig(format='[%(asctime)s] [%(levelname)s] [%(process)d] [%(name)s] %(message)s',
-                    level=settings.log_level)
-
-sentry_sdk.init(traces_sample_rate=0.1)
-sentry_sdk.set_tag('component', 'backend-deepspeed')
+mii.deploy(
+    task='text-generation',
+    model=settings.model_id,
+    model_path=str(settings.model_path) if settings.model_path is not None else None,
+    deployment_name=DEPLOYMENT_NAME,
+    mii_config={'tensor_parallel': 1, 'dtype': 'fp16'},
+)
