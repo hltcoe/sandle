@@ -108,6 +108,16 @@ class CompletionsParams(BaseModel):
         return v
 
 
+def mii_query(params: CompletionsParams) -> List[str]:
+    generator = mii.mii_query_handle(DEPLOYMENT_NAME)
+    result = generator.query(
+        {'query': [params.prompt] * params.n},
+        max_new_tokens=params.max_tokens, do_sample=not params.greedy_decoding, top_p=params.top_p,
+        temperature=params.temperature, num_return_sequences=params.n,
+    )
+    return result.response
+
+
 @app.get('/v1/models')
 def get_models() -> ModelList:
     return ModelList(
@@ -140,25 +150,17 @@ def post_completions(params: CompletionsParams):
         f'Computing {completion_log_text} of up to {params.max_tokens} {tokens_log_text} for user {params.user}'
     )
 
-    response_id = generate_response_id()
-    created = get_timestamp()
-    prompts = [params.prompt] * params.n
-    generator = mii.mii_query_handle(DEPLOYMENT_NAME)
-    result = generator.query(
-        {'query': prompts},
-        max_new_tokens=params.max_tokens, do_sample=not params.greedy_decoding, top_p=params.top_p,
-        temperature=params.temperature, num_return_sequences=params.n,
-    )
+    raw_completions = mii_query(params)
     api_completions = Completions(
-        id=response_id,
-        created=created,
+        id=generate_response_id(),
+        created=get_timestamp(),
         model_id=settings.model_id,
         choices=[
             CompletionsChoice.parse_truncation(
-                truncate_at_stops(raw_completion_text[len(params.prompt):], stop_strings=stops),
+                truncate_at_stops(raw_completion[len(params.prompt):], stop_strings=stops),
                 i,
             )
-            for (i, raw_completion_text) in enumerate(result.response)
+            for (i, raw_completion) in enumerate(raw_completions)
         ]
     )
 
@@ -177,5 +179,3 @@ logging.basicConfig(format='[%(asctime)s] [%(levelname)s] [%(process)d] [%(name)
 
 sentry_sdk.init(traces_sample_rate=0.1)
 sentry_sdk.set_tag('component', 'backend-deepspeed')
-
-mii_config = {"tensor_parallel": 1, "dtype": "fp16"}
