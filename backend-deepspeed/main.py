@@ -3,6 +3,7 @@ Run a simplified, single-threaded clone of OpenAI's /v1/completions endpoint on 
 in DeepSpeed.
 """
 
+import asyncio
 import json
 import logging
 from pathlib import Path
@@ -78,8 +79,8 @@ def truncate_at_stops(text: str, stop_strings: List[str]) -> Tuple[str, bool]:
 class ModelData(BaseModel):
     id: str
     description: str
-    object: Literal['model'] = 'model'
     owned_by: str
+    object: Literal['model'] = 'model'
     permission: List = Field(default_factory=lambda: [])
 
 
@@ -91,8 +92,8 @@ class ModelList(BaseModel):
 class CompletionsChoice(BaseModel):
     text: str
     index: int
-    logprobs: Literal[None] = None
     finish_reason: Literal[None, 'length', 'stop']
+    logprobs: Literal[None] = None
 
     @classmethod
     def parse_truncation(cls, truncation: Tuple[str, bool], index: int = 0):
@@ -101,9 +102,9 @@ class CompletionsChoice(BaseModel):
 
 
 class CompletionsUsage(BaseModel):
-    prompt_tokens: int
-    completion_tokens: int
-    total_tokens: int
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
 
 
 class Completions(BaseModel):
@@ -135,13 +136,20 @@ class CompletionsParams(BaseModel):
 
 
 def mii_query(params: CompletionsParams) -> List[str]:
-    generator = mii.mii_query_handle(DEPLOYMENT_NAME)
-    result = generator.query(
-        {'query': [params.prompt] * params.n},
-        max_new_tokens=params.max_tokens, do_sample=not params.greedy_decoding, top_p=params.top_p,
-        temperature=params.temperature, num_return_sequences=params.n,
-    )
-    return result.response
+    event_loop = asyncio.new_event_loop()
+
+    try:
+        asyncio.set_event_loop(event_loop)
+        generator = mii.mii_query_handle(DEPLOYMENT_NAME)
+        result = generator.query(
+            {'query': [params.prompt] * params.n},
+            max_new_tokens=params.max_tokens, do_sample=not params.greedy_decoding, top_p=params.top_p,
+            temperature=params.temperature, num_return_sequences=params.n,
+        )
+        return result.response
+
+    finally:
+        event_loop.close()
 
 
 app = FastAPI()
