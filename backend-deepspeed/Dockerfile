@@ -17,6 +17,7 @@ RUN /opt/anaconda3/bin/conda install -y pytorch=1.13 pytorch-cuda=11.7 -c pytorc
 WORKDIR /opt/sandle
 COPY requirements.txt /opt/sandle/
 RUN /opt/anaconda3/bin/conda install -y pip && \
+    /opt/anaconda3/bin/conda run --no-capture-output pip install triton==1.0.0 && \
     /opt/anaconda3/bin/conda run --no-capture-output pip install -r /opt/sandle/requirements.txt
 
 

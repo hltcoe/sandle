@@ -3,5 +3,5 @@ deepspeed-mii
 fastapi
 pydantic
 sentry-sdk[fastapi]
-triton==1.0.0
+# triton==1.0.0
 uvicorn[standard]
