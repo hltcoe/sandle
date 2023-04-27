@@ -14,15 +14,10 @@ RUN curl https://repo.anaconda.com/miniconda/Miniconda3-py39_23.1.0-1-Linux-x86_
 
 RUN /opt/anaconda3/bin/conda install -y pytorch=1.13 pytorch-cuda=11.7 -c pytorch -c nvidia
 
-RUN /opt/anaconda3/bin/conda install -y pip && \
-    git clone -b v0.9.0 https://github.com/microsoft/DeepSpeed.git /opt/deepspeed-src && \
-    /opt/anaconda3/bin/conda run --no-capture-output pip install /opt/deepspeed-src && \
-    rm -rf /opt/deepspeed-src && \
-    /opt/anaconda3/bin/conda run --no-capture-output pip install deepspeed-mii triton==1.0.0
-
 WORKDIR /opt/sandle
 COPY requirements.txt /opt/sandle/
-RUN /opt/anaconda3/bin/conda run --no-capture-output pip install -r /opt/sandle/requirements.txt
+RUN /opt/anaconda3/bin/conda install -y pip && \
+    /opt/anaconda3/bin/conda run --no-capture-output pip install -r /opt/sandle/requirements.txt
 
 
 # 3. Add large model files

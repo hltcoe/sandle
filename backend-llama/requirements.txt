@@ -1,4 +1,6 @@
 click
 flask
+-r https://raw.githubusercontent.com/facebookresearch/llama/e6145a03/requirements.txt
+llama @ git+https://github.com/facebookresearch/llama.git@e6145a03
 sentry-sdk[flask]
 waitress

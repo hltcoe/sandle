@@ -1,4 +1,7 @@
+deepspeed @ git+https://github.com/microsoft/DeepSpeed.git@v0.9.0
+deepspeed-mii
 fastapi
 pydantic
 sentry-sdk[fastapi]
+triton==1.0.0
 uvicorn[standard]
