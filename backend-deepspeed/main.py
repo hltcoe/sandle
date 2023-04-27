@@ -4,6 +4,7 @@ in DeepSpeed.
 """
 
 import asyncio
+from contextlib import asynccontextmanager, contextmanager
 import json
 import logging
 from pathlib import Path
@@ -50,12 +51,6 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-
-logging.basicConfig(format='[%(asctime)s] [%(levelname)s] [%(process)d] [%(name)s] %(message)s',
-                    level=settings.log_level)
-
-sentry_sdk.init(traces_sample_rate=0.1)
-sentry_sdk.set_tag('component', 'backend-deepspeed')
 
 
 def generate_response_id() -> str:
@@ -135,24 +130,48 @@ class CompletionsParams(BaseModel):
         return v
 
 
-def mii_query(params: CompletionsParams) -> List[str]:
+@contextmanager
+def mii_client():
     event_loop = asyncio.new_event_loop()
-
     try:
         asyncio.set_event_loop(event_loop)
-        generator = mii.mii_query_handle(DEPLOYMENT_NAME)
-        result = generator.query(
-            {'query': [params.prompt] * params.n},
-            max_new_tokens=params.max_tokens, do_sample=not params.greedy_decoding, top_p=params.top_p,
-            temperature=params.temperature, num_return_sequences=params.n,
-        )
-        return result.response
-
+        yield mii.mii_query_handle(DEPLOYMENT_NAME)
     finally:
         event_loop.close()
 
 
-app = FastAPI()
+def mii_query(params: CompletionsParams) -> List[str]:
+    with mii_client() as client:
+        return client.query(
+            {'query': [params.prompt] * params.n},
+            max_new_tokens=params.max_tokens, do_sample=not params.greedy_decoding, top_p=params.top_p,
+            temperature=params.temperature, num_return_sequences=params.n,
+        ).response
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logging.basicConfig(format='[%(asctime)s] [%(levelname)s] [%(process)d] [%(name)s] %(message)s',
+                        level=settings.log_level)
+    sentry_sdk.init(traces_sample_rate=0.1)
+    sentry_sdk.set_tag('component', 'backend-deepspeed')
+    mii.deploy(
+        task='text-generation',
+        model=settings.model_id,
+        model_path=str(settings.model_path) if settings.model_path is not None else None,
+        deployment_name=DEPLOYMENT_NAME,
+        mii_config={'tensor_parallel': 1, 'dtype': 'fp16'},
+    )
+
+    yield
+
+    # Shutdown
+    with mii_client() as client:
+        client.terminate()
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 @app.get('/v1/models')
@@ -209,12 +228,3 @@ def post_completions(params: CompletionsParams):
         )
     else:
         return api_completions
-
-
-mii.deploy(
-    task='text-generation',
-    model=settings.model_id,
-    model_path=str(settings.model_path) if settings.model_path is not None else None,
-    deployment_name=DEPLOYMENT_NAME,
-    mii_config={'tensor_parallel': 1, 'dtype': 'fp16'},
-)
