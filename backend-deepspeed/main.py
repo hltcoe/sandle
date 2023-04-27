@@ -26,8 +26,6 @@ DEFAULT_NUM_RETURN_SEQUENCES = 1
 DEFAULT_PROMPT = 'Hello world!'
 DEPLOYMENT_NAME = 'sandle_deployment'
 END_OF_STREAM = '[DONE]'
-FINISH_REASON_EOS = 'stop'
-FINISH_REASON_LENGTH = 'length'
 
 
 with open('models.json') as f:
@@ -35,7 +33,7 @@ with open('models.json') as f:
 
 
 class Settings(BaseSettings):
-    model_id: str
+    model_id: str = 'bigscience/bloom-560m'
     model_path: Optional[Path] = None
     log_level: Literal['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'] = 'INFO'
 
@@ -93,7 +91,7 @@ class CompletionsChoice(BaseModel):
     @classmethod
     def parse_truncation(cls, truncation: Tuple[str, bool], index: int = 0):
         (text, truncated) = truncation
-        return cls(text=text, index=index, finish_reason=FINISH_REASON_EOS if truncated else FINISH_REASON_LENGTH)
+        return cls(text=text, index=index, finish_reason='stop' if truncated else 'length')
 
 
 class CompletionsUsage(BaseModel):
