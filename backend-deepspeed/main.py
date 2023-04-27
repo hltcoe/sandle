@@ -17,6 +17,7 @@ from fastapi.responses import StreamingResponse
 import mii
 from pydantic import BaseModel, BaseSettings, Field, validator
 import sentry_sdk
+import torch
 
 
 DEFAULT_MAX_TOKENS = 16
@@ -159,7 +160,7 @@ async def lifespan(app: FastAPI):
         model=settings.model_id,
         model_path=str(settings.model_path) if settings.model_path is not None else None,
         deployment_name=DEPLOYMENT_NAME,
-        mii_config={'tensor_parallel': 1, 'dtype': 'fp16'},
+        mii_config={'tensor_parallel': torch.cuda.device_count(), 'dtype': 'fp16'},
     )
 
     yield
