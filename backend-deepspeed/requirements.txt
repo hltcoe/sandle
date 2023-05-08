@@ -1,4 +1,4 @@
-deepspeed @ git+https://github.com/microsoft/DeepSpeed.git@v0.9.0
+deepspeed
 deepspeed-mii
 fastapi
 pydantic
