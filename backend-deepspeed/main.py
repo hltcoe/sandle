@@ -13,7 +13,6 @@ from typing import List, Literal, Optional, Tuple, Union
 from uuid import uuid4
 
 from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
 import mii
 from pydantic import BaseModel, BaseSettings, Field, validator
 import sentry_sdk
@@ -26,7 +25,6 @@ DEFAULT_TOP_P = 1.
 DEFAULT_NUM_RETURN_SEQUENCES = 1
 DEFAULT_PROMPT = 'Hello world!'
 DEPLOYMENT_NAME = 'sandle_deployment'
-END_OF_STREAM = '[DONE]'
 
 
 with open('models.json') as f:
@@ -181,7 +179,7 @@ def get_models() -> ModelList:
 
 
 @app.post('/v1/completions')
-def post_completions(params: CompletionsParams):
+def post_completions(params: CompletionsParams) -> Completions:
     if isinstance(params.stop, str):
         stops = [params.stop]
     else:
@@ -206,7 +204,7 @@ def post_completions(params: CompletionsParams):
     )
 
     raw_completions = mii_query(params)
-    api_completions = Completions(
+    return Completions(
         id=generate_response_id(),
         created=get_timestamp(),
         model_id=settings.model_id,
@@ -218,12 +216,3 @@ def post_completions(params: CompletionsParams):
             for (i, raw_completion) in enumerate(raw_completions)
         ]
     )
-
-    if params.stream:
-        return StreamingResponse(
-            (f'data: {event_data}\n\n' for event_data in (api_completions.json(), END_OF_STREAM)),
-            media_type='text/event-stream',
-            headers={'X-Accel-Buffering': 'no'},  # tell nginx not to buffer
-        )
-    else:
-        return api_completions
