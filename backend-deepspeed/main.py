@@ -221,7 +221,7 @@ def post_completions(params: CompletionsParams):
 
     if params.stream:
         return StreamingResponse(
-            (f'data: {event_data}\n\n' for event_data in (json.dumps(api_completions), END_OF_STREAM)),
+            (f'data: {event_data}\n\n' for event_data in (api_completions.json(), END_OF_STREAM)),
             media_type='text/event-stream',
             headers={'X-Accel-Buffering': 'no'},  # tell nginx not to buffer
         )
