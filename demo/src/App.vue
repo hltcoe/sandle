@@ -89,8 +89,8 @@
               ></i>
             </div>
           </div>
-          <div class="m-3 alert alert-danger" v-if="modelsAlert">
-            {{ modelsAlert }}
+          <div class="m-3 alert alert-danger" v-if="modelsError">
+            {{ modelsError }}
           </div>
           <div class="m-3" v-if="models">
             <label class="form-label" for="model-input"> Model </label>
@@ -304,7 +304,6 @@ import "@popperjs/core";
 import { Tooltip } from "bootstrap";
 import { nextTick } from "vue";
 import axios from "axios";
-import { SSE } from "sse.js";
 import * as Sentry from "@sentry/vue";
 
 const DEFAULT_TEMPERATURE = 0.7;
@@ -330,7 +329,7 @@ export default {
       apiKey: null,
       modelId: "facebook/opt-2.7b",
       models: null,
-      modelsAlert: null,
+      modelsError: null,
       stopJSONString: "\\n",
       maxNewTokens: 20,
       temperature: DEFAULT_TEMPERATURE,
@@ -393,7 +392,7 @@ A:`,
       const previousModelId = this.modelId;
       this.models = null;
       this.modelId = null;
-      this.modelsAlert = null;
+      this.modelsError = null;
       try {
         this.models = await this.getModels();
         if (this.models && this.models.length > 0) {
@@ -405,7 +404,7 @@ A:`,
         }
       } catch (e) {
         this.modelId = previousModelId;
-        this.modelsAlert = formatAxiosError(e);
+        this.modelsError = formatAxiosError(e);
         if (!(e.response && [401, 403].includes(e.response.status))) {
           throw e;
         }
@@ -417,31 +416,6 @@ A:`,
         headers: this.sandleHeaders,
       });
       return response.data.data;
-    },
-    handleCompletionsMessage(event) {
-      if (event.data !== "[DONE]") {
-        const completions = JSON.parse(event.data);
-        if (completions !== null) {
-          const generatedText = completions.choices[0].text;
-          if (generatedText !== null) {
-            this.prompt += generatedText;
-          }
-        }
-      } else {
-        this.prompt =
-          (this.stripTrailingWhitespace ? this.prompt.trimEnd() : this.prompt) +
-          this.completionSuffix;
-        this.runningCompletions = false;
-      }
-      nextTick(
-        () => (this.$refs.textbox.scrollTop = this.$refs.textbox.scrollHeight)
-      );
-    },
-    handleCompletionsError(event) {
-      const message = `Error streaming completions: The backend may be busy or down`;
-      this.completionsError = message;
-      this.runningCompletions = false;
-      throw new Error(message);
     },
     async redoPreviousCompletions() {
       if (this.previousCompletionsPrompt !== null) {
@@ -459,10 +433,8 @@ A:`,
             "Warning: The prompt ends with a space character which may cause performance issues.";
         }
         try {
-          const url = `${
-            import.meta.env.VITE_SANDLE_URL_PREFIX
-          }/v1/completions`;
-          const payload = JSON.stringify({
+          const url = `${import.meta.env.VITE_SANDLE_URL_PREFIX}/v1/completions`;
+          const payload = {
             model: this.modelId,
             prompt: this.prompt,
             greedy_decoding:
@@ -471,19 +443,19 @@ A:`,
             temperature: this.temperature > 0 ? this.temperature : 1,
             top_p: this.topP,
             stop: this.stop ? this.stop : null,
-            stream: true,
-          });
+          };
           this.runningCompletions = true;
-          const source = new SSE(url, {
-            payload: payload,
-            headers: this.sandleHeaders,
-          });
-          source.addEventListener("message", this.handleCompletionsMessage);
-          source.addEventListener("error", this.handleCompletionsError);
-          source.addEventListener("abort", this.handleCompletionsError);
-          source.stream();
+          const response = await axios.post(url, payload, { headers: this.sandleHeaders });
+          const generatedText = response.data.choices[0].text;
+          this.prompt +=
+            (this.stripTrailingWhitespace ? generatedText.trimEnd() : generatedText) +
+            this.completionSuffix;
+          this.runningCompletions = false;
+          nextTick(
+            () => (this.$refs.textbox.scrollTop = this.$refs.textbox.scrollHeight)
+          );
         } catch (e) {
-          this.completionsError = `Error setting up completions stream: ${e}`;
+          this.completionsError = formatAxiosError(e);
           this.runningCompletions = false;
           throw e;
         }
