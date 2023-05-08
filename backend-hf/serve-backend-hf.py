@@ -1,10 +1,9 @@
 import json
 import gc
 import logging
-from itertools import chain, zip_longest
 from pathlib import Path
 from time import time
-from typing import Any, cast, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
+from typing import Any, cast, Dict, List, NamedTuple, Optional, Tuple, Union
 from uuid import uuid4
 
 import sentry_sdk
@@ -22,14 +21,12 @@ import click
 DEFAULT_HOST = '0.0.0.0'
 DEFAULT_PORT = 8000
 DEFAULT_LOG_LEVEL = 'INFO'
-DEFAULT_STREAM_BATCH_SIZE = 0
 DEFAULT_MAX_TOKENS = 16
 DEFAULT_TEMPERATURE = 1.
 DEFAULT_TOP_P = 1.
 DEFAULT_NUM_RETURN_SEQUENCES = 1
 EOS = '</s>'
 DEFAULT_PROMPT = EOS
-END_OF_STREAM = '[DONE]'
 FINISH_REASON_EOS = 'stop'
 FINISH_REASON_LENGTH = 'length'
 
@@ -168,83 +165,6 @@ class LM:
                 num_return_sequences=num_return_sequences,
             ))
         ]
-
-    def stream_complete(
-            self, text: str, model_id: str,
-            stop_strings: List[str],
-            max_new_tokens: int = DEFAULT_MAX_TOKENS,
-            do_sample: bool = True,
-            top_p: float = DEFAULT_TOP_P,
-            temperature: float = DEFAULT_TEMPERATURE,
-            num_return_sequences: int = DEFAULT_NUM_RETURN_SEQUENCES,
-            stream_batch_size: int = DEFAULT_STREAM_BATCH_SIZE) -> Iterable[Completion]:
-        streams = [
-            self._stream_complete_single(
-                text, model_id, stop_strings,
-                max_new_tokens=max_new_tokens, do_sample=do_sample, top_p=top_p, temperature=temperature,
-                index=i, stream_batch_size=stream_batch_size,
-            )
-            for i in range(num_return_sequences)
-        ]
-        return (
-            c
-            for c in (
-                completion
-                for completions in zip_longest(*streams, fillvalue=None)
-                for completion in completions
-            )
-            if c is not None
-        )
-
-    def _stream_complete_single(
-            self, text: str, model_id: str,
-            stop_strings: List[str],
-            max_new_tokens: int = DEFAULT_MAX_TOKENS,
-            do_sample: bool = True,
-            top_p: float = DEFAULT_TOP_P,
-            temperature: float = DEFAULT_TEMPERATURE,
-            index: int = 0,
-            stream_batch_size: int = DEFAULT_STREAM_BATCH_SIZE) -> Iterable[Completion]:
-        (tokenizer, model) = self.get_tokenizer_and_model(model_id)
-
-        prompt = text
-        num_new_tokens = 0
-        finish_reason = None
-        while finish_reason is None:
-            [raw_completion] = self._complete(
-                text, tokenizer, model, stop_strings=stop_strings,
-                max_new_tokens=min(
-                    stream_batch_size if stream_batch_size > 0 else max_new_tokens,
-                    max_new_tokens - num_new_tokens
-                ),
-                do_sample=do_sample, top_p=top_p, temperature=temperature,
-                num_return_sequences=1,
-            )
-
-            if raw_completion.truncated:
-                finish_reason = FINISH_REASON_EOS
-            else:
-                num_new_tokens += raw_completion.pretruncation_num_new_tokens
-                if num_new_tokens >= max_new_tokens:
-                    if num_new_tokens > max_new_tokens:
-                        logging.warning('Generated more tokens than the max number specified')
-                    finish_reason = FINISH_REASON_LENGTH
-
-            # Check if a stop sequence spans the previous completion chunk and this one
-            (truncated_text_after_prompt, truncated) = truncate_at_stops(
-                raw_completion.text[len(prompt):],
-                stop_strings)
-            if truncated:
-                truncation_index = len(prompt) + len(truncated_text_after_prompt)
-                yield Completion(
-                    text=raw_completion.text[-len(raw_completion.new_text):truncation_index],
-                    finish_reason=FINISH_REASON_EOS,
-                    idx=index,
-                )
-            else:
-                yield Completion(text=raw_completion.new_text, finish_reason=finish_reason, idx=index)
-
-            text = raw_completion.text
 
     def _complete(self, text: str, tokenizer: PreTrainedTokenizer, model: PreTrainedModel,
                   stop_strings: List[str], max_new_tokens: int,
@@ -407,6 +327,8 @@ def create_app(offload_dir: Optional[Path] = None,
             num_return_sequences = int(request_json.get('n', DEFAULT_NUM_RETURN_SEQUENCES))
 
             stream = request_json.get('stream', False)
+            if stream:
+                raise NotImplementedError('Streaming is not implemented')
 
             greedy_decoding = request_json.get('greedy_decoding', False)
 
@@ -418,14 +340,10 @@ def create_app(offload_dir: Optional[Path] = None,
             sentry_sdk.set_user({'id': user} if user else None)
 
             completion_log_text = 'completion' if num_return_sequences == 1 else 'completions'
-            if stream:
-                completion_log_text = 'streaming ' + completion_log_text
             tokens_log_text = 'token' if max_tokens == 1 else 'tokens'
             if num_return_sequences != 1:
                 tokens_log_text = tokens_log_text + ' each'
             logging.debug(f'Computing {completion_log_text} of up to {max_tokens} {tokens_log_text} for user {user}')
-
-            stream_batch_size = int(request_json.get('stream_batch_size', DEFAULT_STREAM_BATCH_SIZE))
 
         except Exception as ex:
             return make_error_response(
@@ -436,29 +354,11 @@ def create_app(offload_dir: Optional[Path] = None,
 
         response_id = generate_response_id()
         created = get_timestamp()
-        if stream:
-            return Response(
-                (f'data: {event_data}\n\n' for event_data in chain(
-                    (
-                        json.dumps(make_api_completions(response_id, created, model_id, [completion]))
-                        for completion in lm.stream_complete(
-                            prompt, model_id, stops, max_new_tokens=max_tokens,
-                            do_sample=not greedy_decoding, top_p=top_p, temperature=temperature,
-                            num_return_sequences=num_return_sequences,
-                            stream_batch_size=stream_batch_size,
-                        )
-                    ),
-                    [END_OF_STREAM],
-                )),
-                mimetype='text/event-stream',
-                headers={'X-Accel-Buffering': 'no'},  # tell nginx not to buffer
-            )
-        else:
-            return jsonify(make_api_completions(response_id, created, model_id, lm.complete(
-                prompt, model_id, stops, max_new_tokens=max_tokens,
-                do_sample=not greedy_decoding, top_p=top_p, temperature=temperature,
-                num_return_sequences=num_return_sequences,
-            )))
+        return jsonify(make_api_completions(response_id, created, model_id, lm.complete(
+            prompt, model_id, stops, max_new_tokens=max_tokens,
+            do_sample=not greedy_decoding, top_p=top_p, temperature=temperature,
+            num_return_sequences=num_return_sequences,
+        )))
 
     return app
 
