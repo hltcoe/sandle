@@ -130,11 +130,8 @@ class CompletionsParams(BaseModel):
 @contextmanager
 def mii_client():
     event_loop = asyncio.new_event_loop()
-    try:
-        asyncio.set_event_loop(event_loop)
-        yield mii.mii_query_handle(DEPLOYMENT_NAME)
-    finally:
-        event_loop.close()
+    asyncio.set_event_loop(event_loop)
+    yield mii.mii_query_handle(DEPLOYMENT_NAME)
 
 
 def mii_query(params: CompletionsParams) -> List[str]:
@@ -162,10 +159,6 @@ async def lifespan(app: FastAPI):
     )
 
     yield
-
-    # Shutdown
-    with mii_client() as client:
-        client.terminate()
 
 
 app = FastAPI(lifespan=lifespan)
