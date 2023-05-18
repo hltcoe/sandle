@@ -161,7 +161,7 @@ app = FastAPI(lifespan=lifespan)
 
 @app.get('/v1/models')
 def get_models() -> ModelList:
-    model_data = ModelData(id=settings.model_id, description=settings.model_id, owner='unspecified')
+    model_data = ModelData(id=settings.model_id, description=settings.model_id, owned_by='unspecified')
     for known_model_data in MODELS:
         if known_model_data['id'] == settings.model_id:
             model_data = ModelData(**known_model_data)
