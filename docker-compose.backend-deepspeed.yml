@@ -22,6 +22,7 @@ services:
     environment:
       - SANDLE_MODEL_ID=${SANDLE_DEEPSPEED_MODEL:-bigscience/bloom-560m}
       - SANDLE_MODEL_PATH=/root/.cache/mii_models
+      - SANDLE_MODEL_DTYPE=${SANDLE_DEEPSPEED_DTYPE:-fp16}
       - SANDLE_LOG_LEVEL
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-development}
     restart: unless-stopped

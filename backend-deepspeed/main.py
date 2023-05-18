@@ -35,6 +35,7 @@ with open('models.json') as f:
 
 class Settings(BaseSettings):
     model_id: str = 'bigscience/bloom-560m'
+    model_dtype: str = 'fp16'
     model_path: Optional[Path] = None
     log_level: Literal['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'] = 'INFO'
 
@@ -154,7 +155,7 @@ async def lifespan(app: FastAPI):
         model=settings.model_id,
         model_path=str(settings.model_path) if settings.model_path is not None else None,
         deployment_name=DEPLOYMENT_NAME,
-        mii_config={'tensor_parallel': torch.cuda.device_count(), 'dtype': 'fp16'},
+        mii_config={'tensor_parallel': torch.cuda.device_count(), 'dtype': settings.model_dtype},
     )
 
     yield
