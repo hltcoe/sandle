@@ -38,12 +38,6 @@ class Settings(BaseSettings):
     model_path: Optional[Path] = None
     log_level: Literal['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'] = 'INFO'
 
-    @validator('model_id')
-    def model_id_is_configured(cls, v, **kwargs):
-        if v not in [model_data['id'] for model_data in MODELS]:
-            raise ValueError(f'Model {v} specified in settings is not configured in models.json.')
-        return v
-
     class Config:
         env_prefix = 'sandle_'
         env_file = '.env'
@@ -175,9 +169,12 @@ app = FastAPI(lifespan=lifespan)
 
 @app.get('/v1/models')
 def get_models() -> ModelList:
-    return ModelList(
-        data=[ModelData(**model_data) for model_data in MODELS if model_data['id'] == settings.model_id],
-    )
+    model_data = ModelData(id=settings.model_id, description=settings.model_id, owner='unspecified')
+    for known_model_data in MODELS:
+        if known_model_data['id'] == settings.model_id:
+            model_data = ModelData(**known_model_data)
+
+    return ModelList(data=[model_data])
 
 
 @app.post('/v1/completions')
