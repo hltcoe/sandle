@@ -11,7 +11,6 @@ import click
 DEFAULT_HOST = '0.0.0.0'
 DEFAULT_PORT = 8000
 DEFAULT_LOG_LEVEL = 'INFO'
-END_OF_STREAM = '[DONE]'
 
 with open('models.json') as f:
     MODELS = json.load(f)
@@ -87,18 +86,11 @@ def create_app() -> Flask:
 
     @app.route('/v1/completions', methods=['POST'])
     def post_completions():
+
         stream = request.json.get('stream', False)
         if stream:
-            return Response(
-                (f'data: {event_data}\n\n' for event_data in [
-                    json.dumps(make_api_completion()),
-                    END_OF_STREAM,
-                ]),
-                mimetype='text/event-stream',
-                headers={'X-Accel-Buffering': 'no'},  # tell nginx not to buffer
-            )
-        else:
-            return jsonify(make_api_completion())
+            raise NotImplementedError('Streaming is not implemented')
+        return jsonify(make_api_completion())
 
     return app
 

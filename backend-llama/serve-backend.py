@@ -29,7 +29,6 @@ DEFAULT_TEMPERATURE = 1.
 DEFAULT_TOP_P = 1.
 DEFAULT_NUM_RETURN_SEQUENCES = 1
 DEFAULT_PROMPT = 'Hello world!'
-END_OF_STREAM = '[DONE]'
 FINISH_REASON_EOS = 'stop'
 FINISH_REASON_LENGTH = 'length'
 SYNC_INTERVAL = 0.2
@@ -241,8 +240,8 @@ def create_app(model_id: str, generate_queue: Queue) -> Flask:
             num_return_sequences = int(request_json.get('n', DEFAULT_NUM_RETURN_SEQUENCES))
 
             stream = request_json.get('stream', False)
-            if stream and num_return_sequences != 1:
-                raise NotImplementedError('Streaming with more than one return sequence is not implemented')
+            if stream:
+                raise NotImplementedError('Streaming is not implemented')
 
             temperature = float(request_json.get('temperature', DEFAULT_TEMPERATURE))
 
@@ -256,8 +255,6 @@ def create_app(model_id: str, generate_queue: Queue) -> Flask:
             sentry_sdk.set_user({'id': user} if user else None)
 
             completion_log_text = 'completion' if num_return_sequences == 1 else 'completions'
-            if stream:
-                completion_log_text = 'streaming ' + completion_log_text
             tokens_log_text = 'token' if max_tokens == 1 else 'tokens'
             if num_return_sequences != 1:
                 tokens_log_text = tokens_log_text + ' each'
@@ -298,14 +295,7 @@ def create_app(model_id: str, generate_queue: Queue) -> Flask:
                 for (i, raw_completion_text) in enumerate(generate_queue.get())
             ],
         )
-        if stream:
-            return Response(
-                (f'data: {event_data}\n\n' for event_data in (json.dumps(api_completions), END_OF_STREAM)),
-                mimetype='text/event-stream',
-                headers={'X-Accel-Buffering': 'no'},  # tell nginx not to buffer
-            )
-        else:
-            return jsonify(api_completions)
+        return jsonify(api_completions)
 
     return app
 
