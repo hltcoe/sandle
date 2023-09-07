@@ -119,14 +119,8 @@ components:
           type: array
           items:
             type: string
-        description:
-          description: >-
-            Short, unique, human-friendly description of model.
-            This option is an extension of the OpenAI API.
-          type: string
-          example: OPT 1.3B
       example: >-
-        {"id":"facebook/opt-125m","object":"model","owned_by":"facebook","permission":[],"description":"OPT 125M"}
+        {"id":"facebook/opt-125m","object":"model","owned_by":"facebook","permission":[]}
     Prompt:
       type: object
       properties:
@@ -188,21 +182,6 @@ components:
           type: string
           nullable: true
           default: null
-        greedy_decoding:
-          description: >-
-            Whether to use greedy decoding or sampling for generation.
-            This option is an extension of the OpenAI API.
-          type: boolean
-          default: false
-        stream_batch_size:
-          description: >-
-            Maximum number of completion tokens to generate per batch
-            (per message) when `stream` is true.
-            If zero, generate the entire completion in one batch.
-            This option is an extension of the OpenAI API.
-          type: integer
-          minimum: 0
-          default: 0
       example: >-
         {"model": "facebook/opt-125m", "prompt": "Hello,"}
     Completion:

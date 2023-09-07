@@ -96,7 +96,7 @@
             <label class="form-label" for="model-input"> Model </label>
             <select class="form-select" id="model-input" v-model="modelId">
               <option v-for="model in models" :value="model.id" :key="model.id">
-                {{ model.description }}
+                {{ model.id }}
               </option>
             </select>
           </div>
