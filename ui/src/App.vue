@@ -375,10 +375,13 @@ A:`,
       return this.apiKey && BASE_64_REGEX.test(this.apiKey) ? this.apiKey : "";
     },
     sandleHeaders() {
-      return {
+      const h = {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${this.safeAPIKey}`,
       };
+      if (this.safeAPIKey) {
+        h["Authorization"] = `Bearer ${this.safeAPIKey}`;
+      }
+      return h;
     },
     completionSuffix() {
       return JSON.parse('"' + this.completionSuffixJSONString + '"');
@@ -415,6 +418,7 @@ A:`,
       const response = await axios.get(url, {
         headers: this.sandleHeaders,
       });
+      console.log(response.data.data);
       return response.data.data;
     },
     async redoPreviousCompletions() {
