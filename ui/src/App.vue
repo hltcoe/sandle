@@ -49,7 +49,7 @@
                 <button
                   type="button"
                   class="btn btn-secondary"
-                  :class="{ disabled: runningCompletions || useGreedyDecoding }"
+                  :class="{ disabled: runningCompletions }"
                   title="Resample previous completion"
                   @click="redoPreviousCompletions"
                 >
@@ -137,24 +137,6 @@
             />
           </div>
           <div class="m-3">
-            <input
-              type="checkbox"
-              class="form-check-input me-2"
-              id="use-greedy-decoding-input"
-              v-model="useGreedyDecoding"
-            />
-            <label class="form-check-label" for="use-greedy-decoding-input">
-              Use greedy decoding
-              <a
-                @click.prevent
-                href="#"
-                data-bs-toggle="tooltip"
-                title="If unchecked, use random sampling."
-                ><i class="bi bi-question-circle text-muted"></i
-              ></a>
-            </label>
-          </div>
-          <div class="m-3">
             <label
               class="form-label d-flex justify-content-between"
               for="temperature-input"
@@ -205,7 +187,6 @@
               min="0"
               max="1"
               step="0.01"
-              :disabled="useGreedyDecoding"
               v-model.number="topP"
             />
           </div>
@@ -365,7 +346,6 @@ A:`,
       runningCompletions: false,
       previousCompletionsPrompt: null,
       stripTrailingWhitespace: true,
-      useGreedyDecoding: false,
       completionSuffixJSONString: "\\n\\nQ:",
       tooltips: null,
     };
@@ -441,8 +421,6 @@ A:`,
           const payload = {
             model: this.modelId,
             prompt: this.prompt,
-            greedy_decoding:
-              this.temperature > 0 ? this.useGreedyDecoding : true,
             max_tokens: this.maxNewTokens,
             temperature: this.temperature > 0 ? this.temperature : 1,
             top_p: this.topP,
@@ -479,25 +457,6 @@ A:`,
       handler(newValue) {
         Sentry.setUser(newValue ? { id: newValue } : null);
         this.populateModels();
-      },
-      immediate: true,
-    },
-    temperature: {
-      handler(newValue) {
-        this.useGreedyDecoding = newValue === 0;
-      },
-      immediate: true,
-    },
-    useGreedyDecoding: {
-      handler(newValue) {
-        if (newValue) {
-          this.previousTemperature = this.temperature;
-          this.temperature = 0;
-        } else {
-          this.temperature = this.previousTemperature
-            ? this.previousTemperature
-            : DEFAULT_TEMPERATURE;
-        }
       },
       immediate: true,
     },
