@@ -1,0 +1,8 @@
+click
+flask
+flask-cors
+flask-httpauth
+pydantic
+requests
+sentry-sdk[flask]
+waitress
